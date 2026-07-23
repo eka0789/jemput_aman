@@ -1,0 +1,17 @@
+{
+  "name": "jemput-aman-frontend",
+  "version": "1.0.0",
+  "description": "Frontend Web Application for JemputAman NFC Child Pickup Verification System",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "lucide": "^0.380.0"
+  },
+  "devDependencies": {
+    "vite": "^5.2.11"
+  }
+}

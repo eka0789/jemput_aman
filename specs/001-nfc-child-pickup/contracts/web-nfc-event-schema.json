@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Web NFC Reader Hardware Event & Offline Sync Schema",
+  "type": "object",
+  "required": ["serialNumber", "records", "scanTimestamp"],
+  "properties": {
+    "serialNumber": {
+      "type": "string",
+      "example": "04:A2:8B:12:FE:67:80",
+      "description": "Hexadecimal NFC tag UID returned by Web NFC NDEFReadingEvent.serialNumber"
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "recordType": { "type": "string", "example": "text" },
+          "mediaType": { "type": "string" },
+          "data": { "type": "string" }
+        }
+      }
+    },
+    "scanTimestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "offlineLog": {
+      "type": "object",
+      "properties": {
+        "synced": { "type": "boolean", "default": false },
+        "cachedResult": { "type": "string", "enum": ["VERIFIED", "BLOCKED"] }
+      }
+    }
+  }
+}

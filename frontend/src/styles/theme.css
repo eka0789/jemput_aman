@@ -1,0 +1,280 @@
+/* JemputAman - UI/UX Pro Max Educational & Safety Theme */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fredoka:wght@500;600;700&display=swap');
+
+:root {
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Fredoka', 'Plus Jakarta Sans', sans-serif;
+
+  /* Color System: Friendly Educational Mint, Deep Teal Trust & Warm Sunshine Accents */
+  --primary-deep: #064e3b;
+  --primary-teal: #0f766e;
+  --primary-mint: #0d9488;
+  --primary-light: #14b8a6;
+  --primary-bright: #2dd4bf;
+  --primary-soft: #e6f4f1;
+  --primary-glow: rgba(15, 118, 110, 0.15);
+
+  --accent-sunshine: #f59e0b;
+  --accent-amber-light: #fef3c7;
+  --accent-coral: #ef4444;
+  --accent-coral-soft: #fee2e2;
+  --accent-sky: #0284c7;
+  --accent-sky-soft: #e0f2fe;
+  --accent-purple: #8b5cf6;
+  --accent-purple-soft: #f3e8ff;
+
+  --bg-gradient: linear-gradient(135deg, #f0fdfa 0%, #f4f9f8 40%, #e6f4f1 100%);
+  --bg-dark-header: linear-gradient(135deg, #0f172a 0%, #0f766e 60%, #042f2c 100%);
+  
+  --surface-white: #ffffff;
+  --surface-card-border: #d5e8e4;
+  
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --text-subtle: #64748b;
+
+  --shadow-sm: 0 2px 8px rgba(15, 118, 110, 0.06);
+  --shadow-md: 0 8px 24px -4px rgba(15, 118, 110, 0.10);
+  --shadow-lg: 0 16px 36px -6px rgba(15, 118, 110, 0.14);
+  --shadow-glow: 0 0 25px rgba(20, 184, 166, 0.35);
+
+  --radius-xl: 24px;
+  --radius-lg: 18px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+  --radius-pill: 9999px;
+
+  --transition-bounce: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-smooth: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-gradient);
+  color: var(--text-main);
+  min-height: 100vh;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  background-attachment: fixed;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Background Educational Blobs */
+body::before {
+  content: '';
+  position: absolute;
+  top: -100px;
+  right: -100px;
+  width: 450px;
+  height: 450px;
+  background: radial-gradient(circle, rgba(20, 184, 166, 0.18) 0%, rgba(255,255,255,0) 70%);
+  border-radius: 50%;
+  z-index: -1;
+  pointer-events: none;
+}
+
+body::after {
+  content: '';
+  position: absolute;
+  bottom: -150px;
+  left: -100px;
+  width: 550px;
+  height: 550px;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.12) 0%, rgba(255,255,255,0) 70%);
+  border-radius: 50%;
+  z-index: -1;
+  pointer-events: none;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-heading);
+  letter-spacing: -0.01em;
+}
+
+/* Glass & Clay Cards */
+.edu-card {
+  background: var(--surface-white);
+  border: 2px solid var(--surface-card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 1.5rem;
+  transition: transform var(--transition-bounce), box-shadow var(--transition-smooth), border-color var(--transition-smooth);
+}
+
+.edu-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary-bright);
+}
+
+.edu-card-header {
+  background: var(--bg-dark-header);
+  color: #ffffff;
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+  box-shadow: 0 10px 30px rgba(15, 118, 110, 0.25);
+  border-bottom: 3px solid var(--primary-bright);
+}
+
+/* Modern Typography Utilities */
+.text-heading {
+  font-family: var(--font-heading);
+  color: var(--primary-teal);
+}
+
+.text-gradient-sun {
+  background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #f59e0b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-light {
+  background: linear-gradient(135deg, #ffffff 0%, #2dd4bf 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1.4rem;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  border: none;
+  transition: all var(--transition-bounce);
+  outline: none;
+  user-select: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary-teal), var(--primary-mint));
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(13, 148, 136, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(13, 148, 136, 0.45);
+  background: linear-gradient(135deg, var(--primary-mint), var(--primary-light));
+}
+
+.btn-primary:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn-amber {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(245, 158, 11, 0.3);
+}
+
+.btn-amber:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.45);
+}
+
+.btn-secondary {
+  background: #f1f5f9;
+  color: var(--text-main);
+  border: 1px solid #cbd5e1;
+}
+
+.btn-secondary:hover {
+  background: #e2e8f0;
+  color: var(--primary-teal);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.3);
+}
+
+.btn-danger:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4);
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.9rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.badge-verified {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+.badge-blocked {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+.badge-amber {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.badge-sky {
+  background: #e0f2fe;
+  color: #075985;
+  border: 1px solid #7dd3fc;
+}
+
+/* NFC Wave & Pulse Animations */
+@keyframes nfc-wave-ring {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.6);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 25px rgba(20, 184, 166, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(20, 184, 166, 0);
+  }
+}
+
+.nfc-scanner-card {
+  animation: nfc-wave-ring 2.5s infinite;
+}
+
+@keyframes float-subtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-float {
+  animation: float-subtle 4s ease-in-out infinite;
+}
+
+/* Container */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
