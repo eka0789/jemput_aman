@@ -43,17 +43,17 @@ Expected response:
 }
 ```
 
-For Vercel, add the same server-only variables in Project Settings, and set the frontend
-`VITE_API_BASE_URL` only when the API is deployed on a different domain.
+For Vercel, add the same server-only variables in Project Settings.
 
 ## 4. Vercel monorepo setup
 
-Create two Vercel projects from the same repository:
+JemputAman uses Vercel Services from the root `vercel.json`, so frontend and backend
+deploy together under one project and one domain.
 
-### Backend project
+In Vercel Project Settings:
 
-- Root Directory: `backend`
-- Framework Preset: Other / Express
+- Root Directory: repository root (`.`)
+- Framework Preset: Services
 - Environment Variables:
   - `SUPABASE_URL`
   - `SUPABASE_SECRET_KEY`
@@ -61,11 +61,7 @@ Create two Vercel projects from the same repository:
   - `WHATSAPP_API_URL`
   - `WHATSAPP_API_TOKEN`
 
-### Frontend project
+Do not set `VITE_API_BASE_URL` for this single-domain setup. The frontend uses
+`/api/v1`, which is routed to the Express backend by the root rewrite.
 
-- Root Directory: `frontend`
-- Framework Preset: Vite
-- Environment Variable:
-  - `VITE_API_BASE_URL=https://YOUR-BACKEND.vercel.app/api/v1`
-
-Deploy the backend first so its URL can be added to the frontend environment.
+After deployment, verify `/api/health` and confirm that `database` is `CONNECTED`.
