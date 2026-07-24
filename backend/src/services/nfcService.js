@@ -1,5 +1,36 @@
 import { models } from '../models/schema.js';
 import { pickupLogModel } from '../models/pickupLog.js';
+import { storageService } from './storageService.js';
+
+const storeVerificationPhoto = async ({ pickupLogId, schoolId, facePhoto }) => {
+  const uploaded = await storageService.uploadVerificationPhoto({
+    schoolId,
+    pickupLogId,
+    dataUrl: facePhoto
+  });
+
+  try {
+    const log = await pickupLogModel.attachVerificationPhoto(
+      pickupLogId,
+      schoolId,
+      uploaded.publicUrl
+    );
+
+    if (!log) {
+      await storageService.remove(uploaded.path);
+      return null;
+    }
+
+    return log;
+  } catch (error) {
+    try {
+      await storageService.remove(uploaded.path);
+    } catch {
+      // Keep the original database error as the actionable failure.
+    }
+    throw error;
+  }
+};
 
 export const nfcService = {
   verifyTap: async ({ cardUid, studentId, schoolId, teacherId = 'usr-teacher-1', facePhoto = null }) => {
@@ -106,7 +137,7 @@ export const nfcService = {
 
     // 4. Record successful audit log
     const parent = await models.users.findById(targetStudent.parent_id, schoolId);
-    const log = await pickupLogModel.create({
+    let log = await pickupLogModel.create({
       school_id: schoolId,
       student_id: targetStudent.id,
       student_name: targetStudent.full_name,
@@ -117,8 +148,16 @@ export const nfcService = {
       verification_method: 'NFC_TAP',
       status: 'VERIFIED',
       notes: 'Verifikasi pengetapan NFC berhasil di gerbang sekolah',
-      verification_photo: facePhoto || null
+      verification_photo: null
     });
+
+    if (facePhoto) {
+      log = await storeVerificationPhoto({
+        pickupLogId: log.id,
+        schoolId,
+        facePhoto
+      });
+    }
 
     return {
       status: 'VERIFIED',
@@ -150,7 +189,7 @@ export const nfcService = {
     };
   },
   attachVerificationPhoto: async ({ pickupLogId, schoolId, facePhoto }) => {
-    const log = await pickupLogModel.attachVerificationPhoto(pickupLogId, schoolId, facePhoto);
+    const log = await storeVerificationPhoto({ pickupLogId, schoolId, facePhoto });
 
     if (!log) {
       return null;

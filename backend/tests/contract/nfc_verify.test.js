@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { models } from '../../src/models/schema.js';
 import { pickupLogModel } from '../../src/models/pickupLog.js';
 import { nfcService } from '../../src/services/nfcService.js';
+import { storageService } from '../../src/services/storageService.js';
 
 const schoolId = '1001-tk-ceria-salatiga';
 const activeCard = {
@@ -94,17 +95,27 @@ describe('NFC Verification Contract & Logic Tests', () => {
   });
 
   it('should attach a face photo to an existing successful verification', async () => {
+    vi.spyOn(storageService, 'uploadVerificationPhoto').mockResolvedValue({
+      path: `${schoolId}/verification/log-test/photo.jpg`,
+      publicUrl: 'https://project.supabase.co/storage/v1/object/public/images/photo.jpg'
+    });
     vi.spyOn(pickupLogModel, 'attachVerificationPhoto').mockResolvedValue({
       id: 'log-test',
-      verification_photo: 'data:image/jpeg;base64,face-sample-data'
+      verification_photo: 'https://project.supabase.co/storage/v1/object/public/images/photo.jpg'
     });
 
     const result = await nfcService.attachVerificationPhoto({
       pickupLogId: 'log-test',
       schoolId,
-      facePhoto: 'data:image/jpeg;base64,face-sample-data'
+      facePhoto: 'data:image/jpeg;base64,ZmFjZS1zYW1wbGUtZGF0YQ=='
     });
 
-    expect(result.verification_photo).toContain('data:image/jpeg');
+    expect(storageService.uploadVerificationPhoto).toHaveBeenCalled();
+    expect(pickupLogModel.attachVerificationPhoto).toHaveBeenCalledWith(
+      'log-test',
+      schoolId,
+      'https://project.supabase.co/storage/v1/object/public/images/photo.jpg'
+    );
+    expect(result.verification_photo).toContain('/storage/v1/object/public/images/');
   });
 });

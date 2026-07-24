@@ -22,6 +22,7 @@ export const env = {
     process.env.SUPABASE_PUBLISHABLE_KEY
     || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
     || '',
+  SUPABASE_STORAGE_BUCKET: process.env.SUPABASE_STORAGE_BUCKET || 'images',
   WHATSAPP_API_URL: process.env.WHATSAPP_API_URL || 'https://api.fonnte.com/send',
   WHATSAPP_API_TOKEN: process.env.WHATSAPP_API_TOKEN || ''
 };
