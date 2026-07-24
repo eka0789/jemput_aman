@@ -11,7 +11,8 @@ import {
   updateCardStatus,
   bindNfcCard,
   updateStudentPhoto,
-  updatePickupPersonPhoto
+  updatePickupPersonPhoto,
+  updateStudentParentPhone
 } from './controllers/managementController.js';
 import { tenantMiddleware } from './middlewares/tenant.js';
 import { errorHandler } from './middlewares/errorHandler.js';
@@ -52,6 +53,7 @@ app.get('/api/v1/reports/export/pdf', tenantMiddleware, exportPdfReport);
 app.get('/api/v1/students', tenantMiddleware, getStudents);
 app.post('/api/v1/students', tenantMiddleware, createStudent);
 app.patch('/api/v1/students/:studentId/photo', tenantMiddleware, updateStudentPhoto);
+app.patch('/api/v1/students/:studentId/parent-phone', tenantMiddleware, updateStudentParentPhone);
 app.get('/api/v1/pickup-persons', tenantMiddleware, getPickupPersons);
 app.patch('/api/v1/pickup-persons/:personId/photo', tenantMiddleware, updatePickupPersonPhoto);
 app.post('/api/v1/nfc/cards/status', tenantMiddleware, updateCardStatus);

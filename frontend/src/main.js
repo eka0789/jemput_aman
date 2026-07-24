@@ -36,8 +36,8 @@ const state = {
     { uid: '99:99:99:99:99:99:99', holder: 'Kartu Lama (Telah Dilaporkan Hilang)', status: 'LOST', student: 'Siti Rahma (TK-B2)' }
   ],
   students: [
-    { id: '1111', name: 'Ananda Bintang', class_name: 'TK-A1', parent_name: 'Ibu Dewi Kurnia', phone: '081234567890', photo_url: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=150' },
-    { id: '1112', name: 'Siti Rahma', class_name: 'TK-B2', parent_name: 'Ibu Dewi Kurnia', phone: '081234567890', photo_url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150' }
+    { id: '1111', parent_id: 'usr-parent-1', name: 'Ananda Bintang', class_name: 'TK-A1', parent_name: 'Ibu Dewi Kurnia', phone: '081234567890', photo_url: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=150' },
+    { id: '1112', parent_id: 'usr-parent-1', name: 'Siti Rahma', class_name: 'TK-B2', parent_name: 'Ibu Dewi Kurnia', phone: '081234567890', photo_url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150' }
   ],
   pickupPersons: [
     { id: '2222', name: 'Budi Santoso', relationship: 'Ayah Kandung', photo_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150' },
@@ -193,6 +193,38 @@ window.selectProfilePhoto = (profileType, profileId) => {
   }, { once: true });
 
   input.click();
+};
+
+window.editParentWhatsapp = async (studentId) => {
+  const student = state.students.find(item => item.id === studentId);
+  if (!student) return;
+
+  const phoneNumber = prompt(
+    `Nomor WhatsApp orang tua/wali ${student.name}:`,
+    student.phone || ''
+  );
+  if (phoneNumber === null) return;
+
+  try {
+    const response = await fetch(`${API_BASE}/students/${studentId}/parent-phone`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-School-ID': '1001-tk-ceria-salatiga'
+      },
+      body: JSON.stringify({ phone_number: phoneNumber })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || 'Nomor WhatsApp gagal disimpan.');
+
+    state.students
+      .filter(item => item.parent_id === result.data.parent_id)
+      .forEach(item => { item.phone = result.data.phone_number; });
+    alert(result.message);
+    render();
+  } catch (err) {
+    alert(err.message || 'Nomor WhatsApp gagal disimpan.');
+  }
 };
 
 window.submitNewStudent = async () => {
@@ -563,10 +595,11 @@ const hydrateProfileData = async () => {
         const local = state.students.find(item => item.id === student.id);
         return {
           id: student.id,
+          parent_id: student.parent_id,
           name: student.full_name,
           class_name: student.class_name,
-          parent_name: local?.parent_name || 'Orang Tua / Wali',
-          phone: local?.phone || '-',
+          parent_name: student.parent_name || local?.parent_name || 'Orang Tua / Wali',
+          phone: student.parent_phone_number || '-',
           photo_url: student.photo_url
         };
       });

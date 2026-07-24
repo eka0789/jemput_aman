@@ -1,6 +1,8 @@
 export function renderGateReaderPage(state) {
   const isVerified = state.lastVerification?.status === 'VERIFIED';
   const isBlocked = state.lastVerification?.status === 'BLOCKED';
+  const whatsappStatus = state.lastVerification?.data?.notification_status?.whatsapp;
+  const pushStatus = state.lastVerification?.data?.notification_status?.push;
 
   return `
     <div class="container">
@@ -123,8 +125,16 @@ export function renderGateReaderPage(state) {
                     </div>
                   </div>
 
-                  <div style="margin-top: 1.25rem; font-size: 0.85rem; font-weight: bold; color: #166534; background: #dcfce7; border: 1px solid #bbf7d0; padding: 0.6rem; border-radius: 10px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                    <span>📲</span> Notifikasi Push & WhatsApp telah dikirim otomatis ke HP Orang Tua
+                  <div class="notification-status-panel ${whatsappStatus?.status === 'ACCEPTED' ? 'is-success' : 'is-warning'}">
+                    <strong>
+                      ${whatsappStatus?.status === 'ACCEPTED'
+                        ? 'WhatsApp diterima oleh gateway'
+                        : whatsappStatus?.status === 'FAILED'
+                          ? 'WhatsApp gagal dikirim'
+                          : 'WhatsApp belum dikirim'}
+                    </strong>
+                    <span>${whatsappStatus?.message || 'Mode simulasi atau gateway WhatsApp belum dikonfigurasi.'}</span>
+                    ${pushStatus?.status === 'NOT_CONFIGURED' ? '<span>Push notification belum dikonfigurasi.</span>' : ''}
                   </div>
 
                   ${state.lastVerification?.data?.verification_photo ? `

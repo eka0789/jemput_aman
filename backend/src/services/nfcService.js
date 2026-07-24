@@ -105,6 +105,7 @@ export const nfcService = {
     }
 
     // 4. Record successful audit log
+    const parent = models.users.findById(targetStudent.parent_id, schoolId);
     const log = pickupLogModel.create({
       school_id: schoolId,
       student_id: targetStudent.id,
@@ -137,8 +138,13 @@ export const nfcService = {
           phone_number: pickupPerson.phone_number,
           photo_url: pickupPerson.photo_url
         },
+        parent: parent ? {
+          id: parent.id,
+          full_name: parent.full_name,
+          phone_number: parent.phone_number
+        } : null,
         timestamp: log.timestamp,
-        notification_sent: true,
+        notification_sent: false,
         verification_photo: log.verification_photo
       }
     };

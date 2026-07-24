@@ -13,5 +13,5 @@ export const env = {
   JWT_SECRET: process.env.JWT_SECRET || 'jemput_aman_secret_key_2026',
   DEFAULT_SCHOOL_ID: process.env.DEFAULT_SCHOOL_ID || '1001-tk-ceria-salatiga',
   WHATSAPP_API_URL: process.env.WHATSAPP_API_URL || 'https://api.fonnte.com/send',
-  WHATSAPP_API_TOKEN: process.env.WHATSAPP_API_TOKEN || 'mock_wa_token'
+  WHATSAPP_API_TOKEN: process.env.WHATSAPP_API_TOKEN || ''
 };

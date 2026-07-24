@@ -24,15 +24,23 @@ export const verifyNfcTap = async (req, res, next) => {
 
     if (result.status === 'VERIFIED') {
       // Trigger automatic real-time notifications to Parent (US2 integration)
-      const { student, pickup_person, timestamp } = result.data;
+      const { student, pickup_person, parent, timestamp } = result.data;
       const notifPayload = {
         studentName: student.full_name,
         pickupPersonName: `${pickup_person.full_name} (${pickup_person.relationship})`,
         timestamp: new Date(timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
       };
 
-      whatsappService.sendPickupNotification(pickup_person.phone_number, notifPayload).catch(console.error);
-      pushNotificationService.sendPushAlert(schoolId, notifPayload).catch(console.error);
+      const [whatsapp, push] = await Promise.all([
+        whatsappService.sendPickupNotification(parent?.phone_number, notifPayload),
+        pushNotificationService.sendPushAlert(schoolId, notifPayload)
+      ]);
+
+      result.data.notification_sent = whatsapp.success || push.success;
+      result.data.notification_status = {
+        whatsapp,
+        push
+      };
 
       return res.status(200).json(result);
     } else {

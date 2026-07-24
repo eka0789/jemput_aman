@@ -3,7 +3,14 @@ import { cardManagementService } from '../services/cardManagementService.js';
 
 export const getStudents = (req, res) => {
   const schoolId = req.schoolId;
-  const students = models.students.findBySchool(schoolId);
+  const students = models.students.findBySchool(schoolId).map(student => {
+    const parent = models.users.findById(student.parent_id, schoolId);
+    return {
+      ...student,
+      parent_name: parent?.full_name || 'Orang Tua / Wali',
+      parent_phone_number: parent?.phone_number || null
+    };
+  });
   res.json({ success: true, data: students });
 };
 
@@ -59,6 +66,32 @@ export const updatePickupPersonPhoto = (req, res) => {
   }
 
   return res.json({ success: true, message: 'Foto penjemput berhasil diperbarui', data: person });
+};
+
+export const updateStudentParentPhone = (req, res) => {
+  const phoneNumber = String(req.body.phone_number || '').replace(/[\s()-]/g, '');
+  if (!/^(?:\+62|62|0)8\d{8,12}$/.test(phoneNumber)) {
+    return res.status(400).json({
+      error: 'INVALID_PHONE',
+      message: 'Nomor WhatsApp harus berupa nomor seluler Indonesia yang valid'
+    });
+  }
+
+  const student = models.students.findById(req.params.studentId, req.schoolId);
+  if (!student) {
+    return res.status(404).json({ error: 'STUDENT_NOT_FOUND', message: 'Data siswa tidak ditemukan' });
+  }
+
+  const parent = models.users.updatePhone(student.parent_id, req.schoolId, phoneNumber);
+  if (!parent) {
+    return res.status(404).json({ error: 'PARENT_NOT_FOUND', message: 'Data orang tua siswa tidak ditemukan' });
+  }
+
+  return res.json({
+    success: true,
+    message: 'Nomor WhatsApp orang tua berhasil diperbarui',
+    data: { student_id: student.id, parent_id: parent.id, phone_number: parent.phone_number }
+  });
 };
 
 export const updateCardStatus = (req, res) => {

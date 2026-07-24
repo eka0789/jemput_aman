@@ -1,6 +1,17 @@
 import { db, saveDb } from '../config/database.js';
 
 export const models = {
+  users: {
+    findById: (id, schoolId) => db.users.find(u => u.id === id && (!schoolId || u.school_id === schoolId)),
+    updatePhone: (id, schoolId, phoneNumber) => {
+      const user = db.users.find(u => u.id === id && u.school_id === schoolId);
+      if (user) {
+        user.phone_number = phoneNumber;
+        saveDb();
+      }
+      return user;
+    }
+  },
   schools: {
     findById: (id) => db.schools.find(s => s.id === id),
     findAll: () => db.schools

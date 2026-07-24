@@ -458,6 +458,31 @@ h1, h2, h3, h4 {
   gap: 0.5rem;
 }
 
+.notification-status-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 1.25rem;
+  padding: 0.7rem;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #78350f;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.notification-status-panel.is-success {
+  border-color: #86efac;
+  background: #dcfce7;
+  color: #166534;
+}
+
+.notification-status-panel span {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
 @media (max-width: 620px) {
   .profile-photo-item {
     grid-template-columns: 58px minmax(0, 1fr);

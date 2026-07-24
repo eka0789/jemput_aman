@@ -204,7 +204,12 @@ export function renderDataManagementPage(state) {
                     <td style="padding: 0.75rem 1rem; font-weight: bold; color: #0f172a;">${s.name}</td>
                     <td style="padding: 0.75rem 1rem;"><span class="badge badge-sky">${s.class_name}</span></td>
                     <td style="padding: 0.75rem 1rem;">${s.parent_name}</td>
-                    <td style="padding: 0.75rem 1rem; font-family: monospace; font-weight: bold; color: #0f766e;">${s.phone}</td>
+                    <td style="padding: 0.75rem 1rem;">
+                      <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                        <span style="font-family: monospace; font-weight: bold; color: #0f766e;">${s.phone}</span>
+                        <button class="btn btn-secondary profile-photo-button" onclick="window.editParentWhatsapp('${s.id}')">Edit Nomor</button>
+                      </div>
+                    </td>
                     <td style="padding: 0.75rem 1rem;"><span class="badge badge-verified">Aktif</span></td>
                   </tr>
                 `).join('')}
