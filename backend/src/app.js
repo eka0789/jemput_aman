@@ -17,6 +17,7 @@ import {
 import { tenantMiddleware } from './middlewares/tenant.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { env } from './config/env.js';
+import { isSupabaseConfigured, supabase } from './config/supabase.js';
 
 const app = express();
 
@@ -24,10 +25,22 @@ app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 
 // API Status Health Check
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'HEALTHY',
+app.get('/api/health', async (req, res) => {
+  let database = 'NOT_CONFIGURED';
+  if (isSupabaseConfigured) {
+    const { error } = await supabase.from('schools').select('id', { head: true, count: 'exact' });
+    database = error
+      ? 'UNAVAILABLE'
+      : env.SUPABASE_SECRET_KEY
+        ? 'CONNECTED'
+        : 'SECRET_KEY_REQUIRED';
+  }
+
+  const healthy = database === 'CONNECTED';
+  res.status(healthy ? 200 : 503).json({
+    status: healthy ? 'HEALTHY' : 'DEGRADED',
     service: 'JemputAman Multi-Tenant API Service',
+    database,
     time: new Date().toISOString()
   });
 });

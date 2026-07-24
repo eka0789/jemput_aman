@@ -1,10 +1,14 @@
 import { reportService } from '../services/reportService.js';
 import { pickupLogModel } from '../models/pickupLog.js';
 
-export const getPickupLogs = (req, res) => {
-  const schoolId = req.schoolId;
-  const logs = pickupLogModel.findBySchool(schoolId);
-  res.json({ success: true, data: logs });
+export const getPickupLogs = async (req, res, next) => {
+  try {
+    const schoolId = req.schoolId;
+    const logs = await pickupLogModel.findBySchool(schoolId);
+    res.json({ success: true, data: logs });
+  } catch (err) {
+    next(err);
+  }
 };
 
 export const exportExcelReport = async (req, res, next) => {

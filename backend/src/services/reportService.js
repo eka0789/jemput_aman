@@ -4,7 +4,7 @@ import { pickupLogModel } from '../models/pickupLog.js';
 
 export const reportService = {
   generateExcelReport: async (schoolId) => {
-    const logs = pickupLogModel.findBySchool(schoolId);
+    const logs = await pickupLogModel.findBySchool(schoolId);
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Laporan Kepulangan');
 
@@ -35,9 +35,9 @@ export const reportService = {
   },
 
   generatePdfReport: async (schoolId) => {
+    const logs = await pickupLogModel.findBySchool(schoolId);
     return new Promise((resolve, reject) => {
       try {
-        const logs = pickupLogModel.findBySchool(schoolId);
         const doc = new PDFDocument({ margin: 30 });
         const buffers = [];
 

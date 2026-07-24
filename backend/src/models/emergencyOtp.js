@@ -1,34 +1,62 @@
-import { db, saveDb } from '../config/database.js';
+import { assertSupabaseConfigured, unwrapSupabase } from '../config/supabase.js';
+import { models } from './schema.js';
+
+const client = () => assertSupabaseConfigured();
 
 export const emergencyOtpModel = {
-  create: ({ school_id, student_id, pickup_person_id, otp_code }) => {
-    const student = db.students.find(s => s.id === student_id);
-    const pickupPerson = db.pickupPersons.find(p => p.id === pickup_person_id);
+  create: async ({ school_id, student_id, pickup_person_id, otp_code }) => {
+    const [student, pickupPerson] = await Promise.all([
+      models.students.findById(student_id, school_id),
+      models.pickupPersons.findById(pickup_person_id, school_id)
+    ]);
 
     const otpEntry = {
-      id: `otp-${Date.now()}`,
+      id: `otp-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       school_id,
       student_id,
-      student_name: student ? student.full_name : 'Siswa',
+      student_name: student?.full_name || 'Siswa',
       pickup_person_id,
-      pickup_person_name: pickupPerson ? `${pickupPerson.full_name} (${pickupPerson.relationship})` : 'Penjemput',
+      pickup_person_name: pickupPerson
+        ? `${pickupPerson.full_name} (${pickupPerson.relationship})`
+        : 'Penjemput',
       otp_code,
       status: 'PENDING',
       expires_at: new Date(Date.now() + 600000).toISOString(),
       created_at: new Date().toISOString()
     };
-    db.emergencyOtps.unshift(otpEntry);
-    saveDb();
-    return otpEntry;
+
+    return unwrapSupabase(
+      await client().from('emergency_otps').insert(otpEntry).select().single(),
+      'membuat OTP darurat'
+    );
   },
-  findById: (id) => db.emergencyOtps.find(o => o.id === id),
-  findPendingBySchool: (schoolId) => db.emergencyOtps.filter(o => o.school_id === schoolId && o.status === 'PENDING'),
-  approve: (id) => {
-    const otp = db.emergencyOtps.find(o => o.id === id);
-    if (otp) {
-      otp.status = 'APPROVED';
-      saveDb();
-    }
-    return otp;
-  }
+  findById: async (id) => (
+    unwrapSupabase(
+      await client().from('emergency_otps').select('*').eq('id', id).maybeSingle(),
+      'membaca OTP darurat'
+    )
+  ),
+  findPendingBySchool: async (schoolId) => (
+    unwrapSupabase(
+      await client()
+        .from('emergency_otps')
+        .select('*')
+        .eq('school_id', schoolId)
+        .eq('status', 'PENDING')
+        .order('created_at', { ascending: false }),
+      'membaca OTP tertunda'
+    )
+  ),
+  approve: async (id) => (
+    unwrapSupabase(
+      await client()
+        .from('emergency_otps')
+        .update({ status: 'APPROVED' })
+        .eq('id', id)
+        .eq('status', 'PENDING')
+        .select()
+        .maybeSingle(),
+      'menyetujui OTP'
+    )
+  )
 };

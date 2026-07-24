@@ -1,9 +1,11 @@
-import { db, saveDb } from '../config/database.js';
+import { assertSupabaseConfigured, unwrapSupabase } from '../config/supabase.js';
+
+const client = () => assertSupabaseConfigured();
 
 export const pickupLogModel = {
-  create: (data) => {
+  create: async (data) => {
     const logEntry = {
-      id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: data.id || `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       school_id: data.school_id,
       student_id: data.student_id,
       student_name: data.student_name,
@@ -17,22 +19,39 @@ export const pickupLogModel = {
       notes: data.notes || '',
       verification_photo: data.verification_photo || null
     };
-    db.pickupLogs.unshift(logEntry);
-    saveDb();
-    return logEntry;
-  },
-  findBySchool: (schoolId) => {
-    return db.pickupLogs.filter(log => log.school_id === schoolId);
-  },
-  attachVerificationPhoto: (logId, schoolId, verificationPhoto) => {
-    const log = db.pickupLogs.find(entry => entry.id === logId && entry.school_id === schoolId);
-    if (!log || log.status !== 'VERIFIED') {
-      return null;
-    }
 
-    log.verification_photo = verificationPhoto;
-    saveDb();
-    return log;
+    return unwrapSupabase(
+      await client().from('pickup_logs').insert(logEntry).select().single(),
+      'menyimpan log penjemputan'
+    );
   },
-  findAll: () => db.pickupLogs
+  findBySchool: async (schoolId) => (
+    unwrapSupabase(
+      await client()
+        .from('pickup_logs')
+        .select('*')
+        .eq('school_id', schoolId)
+        .order('timestamp', { ascending: false }),
+      'membaca log penjemputan'
+    )
+  ),
+  attachVerificationPhoto: async (logId, schoolId, verificationPhoto) => (
+    unwrapSupabase(
+      await client()
+        .from('pickup_logs')
+        .update({ verification_photo: verificationPhoto })
+        .eq('id', logId)
+        .eq('school_id', schoolId)
+        .eq('status', 'VERIFIED')
+        .select()
+        .maybeSingle(),
+      'menyimpan foto verifikasi'
+    )
+  ),
+  findAll: async () => (
+    unwrapSupabase(
+      await client().from('pickup_logs').select('*').order('timestamp', { ascending: false }),
+      'membaca seluruh log penjemputan'
+    )
+  )
 };

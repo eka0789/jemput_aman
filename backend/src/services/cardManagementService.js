@@ -1,12 +1,12 @@
 import { models } from '../models/schema.js';
 
 export const cardManagementService = {
-  updateCardStatus: (cardUid, status) => {
-    const card = models.nfcCards.updateStatus(cardUid, status);
+  updateCardStatus: async (cardUid, status, schoolId) => {
+    const card = await models.nfcCards.updateStatus(cardUid, status, schoolId);
     return card;
   },
-  bindCardToPerson: (cardUid, pickupPersonId, schoolId) => {
-    const newCard = models.nfcCards.create({
+  bindCardToPerson: async (cardUid, pickupPersonId, schoolId) => {
+    const newCard = await models.nfcCards.create({
       school_id: schoolId,
       pickup_person_id: pickupPersonId,
       card_uid: cardUid,

@@ -2,9 +2,9 @@ import { emergencyOtpModel } from '../models/emergencyOtp.js';
 import { pickupLogModel } from '../models/pickupLog.js';
 
 export const otpService = {
-  requestOtp: ({ studentId, pickupPersonId, schoolId }) => {
+  requestOtp: async ({ studentId, pickupPersonId, schoolId }) => {
     const randomOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otp = emergencyOtpModel.create({
+    const otp = await emergencyOtpModel.create({
       school_id: schoolId,
       student_id: studentId,
       pickup_person_id: pickupPersonId,
@@ -12,12 +12,12 @@ export const otpService = {
     });
     return otp;
   },
-  approveOtp: (otpId, teacherId = 'usr-teacher-1') => {
-    const otp = emergencyOtpModel.approve(otpId);
+  approveOtp: async (otpId, teacherId = 'usr-teacher-1') => {
+    const otp = await emergencyOtpModel.approve(otpId);
     if (!otp) return null;
 
     // Log verified emergency pickup
-    pickupLogModel.create({
+    await pickupLogModel.create({
       school_id: otp.school_id,
       student_id: otp.student_id,
       student_name: otp.student_name,

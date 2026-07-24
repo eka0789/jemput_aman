@@ -4,11 +4,11 @@ import { pickupLogModel } from '../models/pickupLog.js';
 export const nfcService = {
   verifyTap: async ({ cardUid, studentId, schoolId, teacherId = 'usr-teacher-1', facePhoto = null }) => {
     // 1. Find NFC card in store
-    const card = models.nfcCards.findByUid(cardUid, schoolId);
+    const card = await models.nfcCards.findByUid(cardUid, schoolId);
 
     if (!card) {
       // Record unknown card attempt log
-      pickupLogModel.create({
+      await pickupLogModel.create({
         school_id: schoolId,
         student_id: studentId || 'UNKNOWN',
         student_name: studentId ? 'Siswa ' + studentId : 'Tidak Diketahui',
@@ -30,7 +30,7 @@ export const nfcService = {
     }
 
     if (card.status !== 'ACTIVE') {
-      pickupLogModel.create({
+      await pickupLogModel.create({
         school_id: schoolId,
         student_id: studentId || 'UNKNOWN',
         student_name: 'Siswa ' + (studentId || 'Terikat'),
@@ -52,7 +52,7 @@ export const nfcService = {
     }
 
     // 2. Find linked Pickup Person
-    const pickupPerson = models.pickupPersons.findById(card.pickup_person_id);
+    const pickupPerson = await models.pickupPersons.findById(card.pickup_person_id, schoolId);
     if (!pickupPerson || pickupPerson.status !== 'ACTIVE') {
       return {
         status: 'BLOCKED',
@@ -63,7 +63,7 @@ export const nfcService = {
     }
 
     // 3. Find authorized students for this pickup person
-    const auths = models.authorizations.findByPickupPerson(pickupPerson.id);
+    const auths = await models.authorizations.findByPickupPerson(pickupPerson.id);
     if (!auths || auths.length === 0) {
       return {
         status: 'BLOCKED',
@@ -76,10 +76,10 @@ export const nfcService = {
     // If specific student ID passed, verify link
     let targetStudent = null;
     if (studentId) {
-      targetStudent = models.students.findById(studentId, schoolId);
+      targetStudent = await models.students.findById(studentId, schoolId);
       const isLinked = auths.some(a => a.student_id === studentId);
       if (!isLinked || !targetStudent) {
-        pickupLogModel.create({
+        await pickupLogModel.create({
           school_id: schoolId,
           student_id: studentId,
           student_name: targetStudent ? targetStudent.full_name : 'Siswa Tidak Cocok',
@@ -101,12 +101,12 @@ export const nfcService = {
       }
     } else {
       // Auto-select first authorized student
-      targetStudent = models.students.findById(auths[0].student_id, schoolId);
+      targetStudent = await models.students.findById(auths[0].student_id, schoolId);
     }
 
     // 4. Record successful audit log
-    const parent = models.users.findById(targetStudent.parent_id, schoolId);
-    const log = pickupLogModel.create({
+    const parent = await models.users.findById(targetStudent.parent_id, schoolId);
+    const log = await pickupLogModel.create({
       school_id: schoolId,
       student_id: targetStudent.id,
       student_name: targetStudent.full_name,
@@ -150,7 +150,7 @@ export const nfcService = {
     };
   },
   attachVerificationPhoto: async ({ pickupLogId, schoolId, facePhoto }) => {
-    const log = pickupLogModel.attachVerificationPhoto(pickupLogId, schoolId, facePhoto);
+    const log = await pickupLogModel.attachVerificationPhoto(pickupLogId, schoolId, facePhoto);
 
     if (!log) {
       return null;

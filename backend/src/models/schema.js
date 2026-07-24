@@ -1,87 +1,182 @@
-import { db, saveDb } from '../config/database.js';
+import { assertSupabaseConfigured, unwrapSupabase } from '../config/supabase.js';
+
+const client = () => assertSupabaseConfigured();
+const createId = (prefix) => `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
 export const models = {
   users: {
-    findById: (id, schoolId) => db.users.find(u => u.id === id && (!schoolId || u.school_id === schoolId)),
-    updatePhone: (id, schoolId, phoneNumber) => {
-      const user = db.users.find(u => u.id === id && u.school_id === schoolId);
-      if (user) {
-        user.phone_number = phoneNumber;
-        saveDb();
-      }
-      return user;
-    }
+    findById: async (id, schoolId) => {
+      let query = client().from('app_users').select('*').eq('id', id);
+      if (schoolId) query = query.eq('school_id', schoolId);
+      return unwrapSupabase(await query.maybeSingle(), 'membaca pengguna');
+    },
+    updatePhone: async (id, schoolId, phoneNumber) => (
+      unwrapSupabase(
+        await client()
+          .from('app_users')
+          .update({ phone_number: phoneNumber })
+          .eq('id', id)
+          .eq('school_id', schoolId)
+          .select()
+          .maybeSingle(),
+        'memperbarui nomor pengguna'
+      )
+    )
   },
   schools: {
-    findById: (id) => db.schools.find(s => s.id === id),
-    findAll: () => db.schools
+    findById: async (id) => (
+      unwrapSupabase(
+        await client().from('schools').select('*').eq('id', id).maybeSingle(),
+        'membaca sekolah'
+      )
+    ),
+    findAll: async () => (
+      unwrapSupabase(await client().from('schools').select('*').order('name'), 'membaca sekolah')
+    )
   },
   students: {
-    findBySchool: (schoolId) => db.students.filter(s => s.school_id === schoolId),
-    findById: (id, schoolId) => db.students.find(s => s.id === id && (!schoolId || s.school_id === schoolId)),
-    create: (data) => {
-      const newStudent = { id: `std-${Date.now()}`, ...data, status: 'ACTIVE' };
-      db.students.push(newStudent);
-      saveDb();
-      return newStudent;
+    findBySchool: async (schoolId) => (
+      unwrapSupabase(
+        await client().from('students').select('*').eq('school_id', schoolId).order('full_name'),
+        'membaca siswa'
+      )
+    ),
+    findById: async (id, schoolId) => {
+      let query = client().from('students').select('*').eq('id', id);
+      if (schoolId) query = query.eq('school_id', schoolId);
+      return unwrapSupabase(await query.maybeSingle(), 'membaca siswa');
     },
-    updatePhoto: (id, schoolId, photoUrl) => {
-      const student = db.students.find(s => s.id === id && s.school_id === schoolId);
-      if (student) {
-        student.photo_url = photoUrl;
-        saveDb();
-      }
-      return student;
-    }
+    create: async (data) => (
+      unwrapSupabase(
+        await client()
+          .from('students')
+          .insert({ id: data.id || createId('std'), ...data, status: data.status || 'ACTIVE' })
+          .select()
+          .single(),
+        'menambah siswa'
+      )
+    ),
+    updatePhoto: async (id, schoolId, photoUrl) => (
+      unwrapSupabase(
+        await client()
+          .from('students')
+          .update({ photo_url: photoUrl })
+          .eq('id', id)
+          .eq('school_id', schoolId)
+          .select()
+          .maybeSingle(),
+        'memperbarui foto siswa'
+      )
+    )
   },
   pickupPersons: {
-    findBySchool: (schoolId) => db.pickupPersons.filter(p => p.school_id === schoolId),
-    findById: (id) => db.pickupPersons.find(p => p.id === id),
-    create: (data) => {
-      const newPerson = { id: `pick-${Date.now()}`, ...data, status: 'ACTIVE' };
-      db.pickupPersons.push(newPerson);
-      saveDb();
-      return newPerson;
+    findBySchool: async (schoolId) => (
+      unwrapSupabase(
+        await client().from('pickup_persons').select('*').eq('school_id', schoolId).order('full_name'),
+        'membaca penjemput'
+      )
+    ),
+    findById: async (id, schoolId) => {
+      let query = client().from('pickup_persons').select('*').eq('id', id);
+      if (schoolId) query = query.eq('school_id', schoolId);
+      return unwrapSupabase(await query.maybeSingle(), 'membaca penjemput');
     },
-    updatePhoto: (id, schoolId, photoUrl) => {
-      const person = db.pickupPersons.find(p => p.id === id && p.school_id === schoolId);
-      if (person) {
-        person.photo_url = photoUrl;
-        saveDb();
-      }
-      return person;
-    }
+    create: async (data) => (
+      unwrapSupabase(
+        await client()
+          .from('pickup_persons')
+          .insert({ id: data.id || createId('pick'), ...data, status: data.status || 'ACTIVE' })
+          .select()
+          .single(),
+        'menambah penjemput'
+      )
+    ),
+    updatePhoto: async (id, schoolId, photoUrl) => (
+      unwrapSupabase(
+        await client()
+          .from('pickup_persons')
+          .update({ photo_url: photoUrl })
+          .eq('id', id)
+          .eq('school_id', schoolId)
+          .select()
+          .maybeSingle(),
+        'memperbarui foto penjemput'
+      )
+    )
   },
   nfcCards: {
-    findByUid: (uid, schoolId) => {
-      const formattedUid = uid.trim().toUpperCase();
-      return db.nfcCards.find(c => c.card_uid.toUpperCase() === formattedUid && (!schoolId || c.school_id === schoolId));
-    },
-    findByPickupPerson: (pickupPersonId) => db.nfcCards.filter(c => c.pickup_person_id === pickupPersonId),
-    create: (data) => {
-      const newCard = { id: `card-${Date.now()}`, ...data, issued_at: new Date().toISOString() };
-      db.nfcCards.push(newCard);
-      saveDb();
-      return newCard;
-    },
-    updateStatus: (cardUid, status) => {
-      const card = db.nfcCards.find(c => c.card_uid.toUpperCase() === cardUid.trim().toUpperCase());
-      if (card) {
-        card.status = status;
-        saveDb();
-      }
-      return card;
-    }
+    findByUid: async (uid, schoolId) => (
+      unwrapSupabase(
+        await client()
+          .from('nfc_cards')
+          .select('*')
+          .eq('school_id', schoolId)
+          .ilike('card_uid', uid.trim())
+          .maybeSingle(),
+        'membaca kartu NFC'
+      )
+    ),
+    findByPickupPerson: async (pickupPersonId) => (
+      unwrapSupabase(
+        await client().from('nfc_cards').select('*').eq('pickup_person_id', pickupPersonId),
+        'membaca kartu penjemput'
+      )
+    ),
+    create: async (data) => (
+      unwrapSupabase(
+        await client()
+          .from('nfc_cards')
+          .insert({
+            id: data.id || createId('card'),
+            ...data,
+            issued_at: data.issued_at || new Date().toISOString()
+          })
+          .select()
+          .single(),
+        'menambah kartu NFC'
+      )
+    ),
+    updateStatus: async (cardUid, status, schoolId) => (
+      unwrapSupabase(
+        await client()
+          .from('nfc_cards')
+          .update({ status })
+          .eq('school_id', schoolId)
+          .ilike('card_uid', cardUid.trim())
+          .select()
+          .maybeSingle(),
+        'memperbarui status kartu NFC'
+      )
+    )
   },
   authorizations: {
-    findValidAuth: (studentId, pickupPersonId) => {
-      return db.authorizations.find(a => a.student_id === studentId && a.pickup_person_id === pickupPersonId && a.is_active);
-    },
-    findByStudent: (studentId) => {
-      return db.authorizations.filter(a => a.student_id === studentId && a.is_active);
-    },
-    findByPickupPerson: (pickupPersonId) => {
-      return db.authorizations.filter(a => a.pickup_person_id === pickupPersonId && a.is_active);
-    }
+    findValidAuth: async (studentId, pickupPersonId) => (
+      unwrapSupabase(
+        await client()
+          .from('authorizations')
+          .select('*')
+          .eq('student_id', studentId)
+          .eq('pickup_person_id', pickupPersonId)
+          .eq('is_active', true)
+          .maybeSingle(),
+        'membaca otorisasi'
+      )
+    ),
+    findByStudent: async (studentId) => (
+      unwrapSupabase(
+        await client().from('authorizations').select('*').eq('student_id', studentId).eq('is_active', true),
+        'membaca otorisasi siswa'
+      )
+    ),
+    findByPickupPerson: async (pickupPersonId) => (
+      unwrapSupabase(
+        await client()
+          .from('authorizations')
+          .select('*')
+          .eq('pickup_person_id', pickupPersonId)
+          .eq('is_active', true),
+        'membaca otorisasi penjemput'
+      )
+    )
   }
 };

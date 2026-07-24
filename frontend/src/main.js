@@ -6,7 +6,8 @@ import { renderAdminDashboardPage } from './pages/AdminDashboardPage.js';
 import { renderDataManagementPage } from './pages/DataManagementPage.js';
 import { renderFoundationDashboardPage } from './pages/FoundationDashboardPage.js';
 
-const API_BASE = 'http://localhost:3000/api/v1';
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+  || (import.meta.env.DEV ? 'http://localhost:3000/api/v1' : '/api/v1');
 
 const state = {
   activeTab: 'reader', // reader, parent, admin, data, foundation
