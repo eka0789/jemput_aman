@@ -14,7 +14,8 @@ export const pickupLogModel = {
       verification_method: data.verification_method || 'NFC_TAP',
       status: data.status,
       timestamp: data.timestamp || new Date().toISOString(),
-      notes: data.notes || ''
+      notes: data.notes || '',
+      verification_photo: data.verification_photo || null
     };
     db.pickupLogs.unshift(logEntry);
     saveDb();
@@ -22,6 +23,16 @@ export const pickupLogModel = {
   },
   findBySchool: (schoolId) => {
     return db.pickupLogs.filter(log => log.school_id === schoolId);
+  },
+  attachVerificationPhoto: (logId, schoolId, verificationPhoto) => {
+    const log = db.pickupLogs.find(entry => entry.id === logId && entry.school_id === schoolId);
+    if (!log || log.status !== 'VERIFIED') {
+      return null;
+    }
+
+    log.verification_photo = verificationPhoto;
+    saveDb();
+    return log;
   },
   findAll: () => db.pickupLogs
 };

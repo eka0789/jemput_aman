@@ -13,6 +13,14 @@ export const models = {
       db.students.push(newStudent);
       saveDb();
       return newStudent;
+    },
+    updatePhoto: (id, schoolId, photoUrl) => {
+      const student = db.students.find(s => s.id === id && s.school_id === schoolId);
+      if (student) {
+        student.photo_url = photoUrl;
+        saveDb();
+      }
+      return student;
     }
   },
   pickupPersons: {
@@ -23,6 +31,14 @@ export const models = {
       db.pickupPersons.push(newPerson);
       saveDb();
       return newPerson;
+    },
+    updatePhoto: (id, schoolId, photoUrl) => {
+      const person = db.pickupPersons.find(p => p.id === id && p.school_id === schoolId);
+      if (person) {
+        person.photo_url = photoUrl;
+        saveDb();
+      }
+      return person;
     }
   },
   nfcCards: {

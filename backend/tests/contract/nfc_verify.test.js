@@ -33,4 +33,20 @@ describe('NFC Verification Contract & Logic Tests', () => {
     expect(result.status).toBe('BLOCKED');
     expect(result.code).toBe('CARD_DISABLED');
   });
+
+  it('should attach a face photo to an existing successful verification', async () => {
+    const result = await nfcService.verifyTap({
+      cardUid: '04:A2:8B:12:FE:67:80',
+      schoolId: '1001-tk-ceria-salatiga',
+      studentId: '1111'
+    });
+    const photoResult = await nfcService.attachVerificationPhoto({
+      pickupLogId: result.data.pickup_log_id,
+      schoolId: '1001-tk-ceria-salatiga',
+      facePhoto: 'data:image/jpeg;base64,face-sample-data'
+    });
+
+    expect(result.status).toBe('VERIFIED');
+    expect(photoResult.verification_photo).toContain('data:image/jpeg');
+  });
 });

@@ -126,6 +126,23 @@ export function renderGateReaderPage(state) {
                   <div style="margin-top: 1.25rem; font-size: 0.85rem; font-weight: bold; color: #166534; background: #dcfce7; border: 1px solid #bbf7d0; padding: 0.6rem; border-radius: 10px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
                     <span>📲</span> Notifikasi Push & WhatsApp telah dikirim otomatis ke HP Orang Tua
                   </div>
+
+                  ${state.lastVerification?.data?.verification_photo ? `
+                    <div style="margin-top: 1rem; padding: 0.9rem; border-radius: 14px; background: #f8fafc; border: 1px solid #99f6e4; text-align: center;">
+                      <div style="font-size: 0.8rem; font-weight: 800; color: #0f766e; margin-bottom: 0.45rem; text-transform: uppercase; letter-spacing: 0.04em;">📸 Foto Verifikasi Wajah</div>
+                      <img src="${state.lastVerification.data.verification_photo}" style="width: 100%; max-width: 220px; border-radius: 14px; object-fit: cover; border: 2px solid #14b8a6;" />
+                      <div style="font-size: 0.76rem; color: #64748b; margin-top: 0.45rem;">Foto baru tersimpan sebagai bukti verifikasi penjemputan</div>
+                    </div>
+                  ` : ''}
+                  ${state.cameraError ? `
+                    <div class="camera-error-panel" role="alert">
+                      <div>
+                        <strong>Foto verifikasi belum tersimpan</strong>
+                        <p>${state.cameraError}</p>
+                      </div>
+                      <button class="btn btn-secondary" onclick="window.retryVerificationPhoto()">Coba Kamera Lagi</button>
+                    </div>
+                  ` : ''}
                 </div>
               ` : `
                 <div style="background: linear-gradient(135deg, #fef2f2, #fff1f1); border: 2px solid #fca5a5; border-radius: 16px; padding: 1.5rem; margin-bottom: 1rem;">

@@ -7,6 +7,11 @@ export const getStudents = (req, res) => {
   res.json({ success: true, data: students });
 };
 
+export const getPickupPersons = (req, res) => {
+  const people = models.pickupPersons.findBySchool(req.schoolId);
+  res.json({ success: true, data: people });
+};
+
 export const createStudent = (req, res) => {
   const schoolId = req.schoolId;
   const { full_name, class_name, student_number } = req.body;
@@ -21,6 +26,39 @@ export const createStudent = (req, res) => {
   });
 
   res.status(201).json({ success: true, message: 'Data siswa berhasil ditambahkan', data: newStudent });
+};
+
+const validatePhoto = (photoUrl) => (
+  typeof photoUrl === 'string'
+  && /^data:image\/(jpeg|png|webp);base64,/i.test(photoUrl)
+);
+
+export const updateStudentPhoto = (req, res) => {
+  const { photo_url } = req.body;
+  if (!validatePhoto(photo_url)) {
+    return res.status(400).json({ error: 'INVALID_PHOTO', message: 'File foto siswa tidak valid' });
+  }
+
+  const student = models.students.updatePhoto(req.params.studentId, req.schoolId, photo_url);
+  if (!student) {
+    return res.status(404).json({ error: 'STUDENT_NOT_FOUND', message: 'Data siswa tidak ditemukan' });
+  }
+
+  return res.json({ success: true, message: 'Foto siswa berhasil diperbarui', data: student });
+};
+
+export const updatePickupPersonPhoto = (req, res) => {
+  const { photo_url } = req.body;
+  if (!validatePhoto(photo_url)) {
+    return res.status(400).json({ error: 'INVALID_PHOTO', message: 'File foto penjemput tidak valid' });
+  }
+
+  const person = models.pickupPersons.updatePhoto(req.params.personId, req.schoolId, photo_url);
+  if (!person) {
+    return res.status(404).json({ error: 'PICKUP_PERSON_NOT_FOUND', message: 'Data penjemput tidak ditemukan' });
+  }
+
+  return res.json({ success: true, message: 'Foto penjemput berhasil diperbarui', data: person });
 };
 
 export const updateCardStatus = (req, res) => {

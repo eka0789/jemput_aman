@@ -42,3 +42,44 @@ export const verifyNfcTap = async (req, res, next) => {
     next(err);
   }
 };
+
+export const attachVerificationPhoto = async (req, res, next) => {
+  try {
+    const { pickup_log_id, face_photo } = req.body;
+
+    if (!pickup_log_id || !face_photo) {
+      return res.status(400).json({
+        error: 'INVALID_INPUT',
+        message: 'ID log dan foto wajah verifikasi wajib dikirimkan'
+      });
+    }
+
+    if (!/^data:image\/(jpeg|png|webp);base64,/i.test(face_photo)) {
+      return res.status(400).json({
+        error: 'INVALID_PHOTO',
+        message: 'Format foto verifikasi tidak valid'
+      });
+    }
+
+    const data = await nfcService.attachVerificationPhoto({
+      pickupLogId: pickup_log_id,
+      schoolId: req.schoolId,
+      facePhoto: face_photo
+    });
+
+    if (!data) {
+      return res.status(404).json({
+        error: 'PICKUP_LOG_NOT_FOUND',
+        message: 'Log verifikasi berhasil tidak ditemukan'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Foto wajah tersimpan pada data verifikasi penjemputan',
+      data
+    });
+  } catch (err) {
+    next(err);
+  }
+};

@@ -2,7 +2,7 @@ import { models } from '../models/schema.js';
 import { pickupLogModel } from '../models/pickupLog.js';
 
 export const nfcService = {
-  verifyTap: async ({ cardUid, studentId, schoolId, teacherId = 'usr-teacher-1' }) => {
+  verifyTap: async ({ cardUid, studentId, schoolId, teacherId = 'usr-teacher-1', facePhoto = null }) => {
     // 1. Find NFC card in store
     const card = models.nfcCards.findByUid(cardUid, schoolId);
 
@@ -115,7 +115,8 @@ export const nfcService = {
       duty_teacher_id: teacherId,
       verification_method: 'NFC_TAP',
       status: 'VERIFIED',
-      notes: 'Verifikasi pengetapan NFC berhasil di gerbang sekolah'
+      notes: 'Verifikasi pengetapan NFC berhasil di gerbang sekolah',
+      verification_photo: facePhoto || null
     });
 
     return {
@@ -137,8 +138,21 @@ export const nfcService = {
           photo_url: pickupPerson.photo_url
         },
         timestamp: log.timestamp,
-        notification_sent: true
+        notification_sent: true,
+        verification_photo: log.verification_photo
       }
+    };
+  },
+  attachVerificationPhoto: async ({ pickupLogId, schoolId, facePhoto }) => {
+    const log = pickupLogModel.attachVerificationPhoto(pickupLogId, schoolId, facePhoto);
+
+    if (!log) {
+      return null;
+    }
+
+    return {
+      pickup_log_id: log.id,
+      verification_photo: log.verification_photo
     };
   }
 };

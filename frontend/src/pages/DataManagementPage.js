@@ -4,6 +4,7 @@ export function renderDataManagementPage(state) {
     { id: '1111', name: 'Ananda Bintang', class_name: 'TK-A1', parent_name: 'Ibu Dewi Kurnia', phone: '081234567890' },
     { id: '1112', name: 'Siti Rahma', class_name: 'TK-B2', parent_name: 'Ibu Dewi Kurnia', phone: '081234567890' }
   ];
+  const pickupPersons = state.pickupPersons || [];
   const staff = state.staff || [
     { id: 'usr-teacher-1', name: 'Pak Ahmad, S.Pd', role: 'Guru Piket Gerbang', phone: '081122334456' },
     { id: 'usr-admin-1', name: 'Ibu Ratna, S.Pd', role: 'Admin Sekolah', phone: '081122334455' },
@@ -107,6 +108,25 @@ export function renderDataManagementPage(state) {
           </div>
         </div>
 
+        <div class="edu-card" style="background: white; margin-bottom: 1.5rem;">
+          <div style="margin-bottom: 1rem;">
+            <h4 style="color: #0f766e; margin: 0;">Foto Penjemput / Orang Tua</h4>
+            <p style="font-size: 0.82rem; color: #64748b; margin-top: 0.2rem;">Foto ini akan tampil sebagai identitas pembanding setelah kartu NFC terverifikasi.</p>
+          </div>
+          <div class="profile-photo-grid">
+            ${pickupPersons.map(person => `
+              <div class="profile-photo-item">
+                <img src="${person.photo_url}" alt="Foto ${person.name}" />
+                <div class="profile-photo-copy">
+                  <strong>${person.name}</strong>
+                  <span>${person.relationship}</span>
+                </div>
+                <button class="btn btn-secondary profile-photo-button" onclick="window.selectProfilePhoto('pickup_person', '${person.id}')">Unggah Foto</button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
         <!-- Table of Existing Active Cards -->
         <div class="edu-card" style="background: white;">
           <h4 style="color: #0f766e; margin-bottom: 1rem;">🎴 Daftar Kartu NFC Terikat Aktif</h4>
@@ -164,6 +184,7 @@ export function renderDataManagementPage(state) {
             <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem;">
               <thead>
                 <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569;">
+                  <th style="padding: 0.75rem 1rem;">FOTO</th>
                   <th style="padding: 0.75rem 1rem;">NAMA MURID</th>
                   <th style="padding: 0.75rem 1rem;">KELAS</th>
                   <th style="padding: 0.75rem 1rem;">ORANG TUA / WALI</th>
@@ -174,6 +195,12 @@ export function renderDataManagementPage(state) {
               <tbody>
                 ${students.map(s => `
                   <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 0.75rem 1rem;">
+                      <div class="student-photo-control">
+                        <img src="${s.photo_url}" alt="Foto ${s.name}" />
+                        <button class="btn btn-secondary profile-photo-button" onclick="window.selectProfilePhoto('student', '${s.id}')">Unggah Foto</button>
+                      </div>
+                    </td>
                     <td style="padding: 0.75rem 1rem; font-weight: bold; color: #0f172a;">${s.name}</td>
                     <td style="padding: 0.75rem 1rem;"><span class="badge badge-sky">${s.class_name}</span></td>
                     <td style="padding: 0.75rem 1rem;">${s.parent_name}</td>
