@@ -1,10 +1,35 @@
 import { models } from '../models/schema.js';
 import { cardManagementService } from '../services/cardManagementService.js';
 
+const normalizeText = (value, field, maxLength = 120) => {
+  const normalized = String(value || '').trim().replace(/[\u0000-\u001f\u007f]/g, '');
+  if (!normalized || normalized.length > maxLength || /[<>]/.test(normalized)) {
+    const error = new Error(`${field} wajib diisi, maksimal ${maxLength} karakter, dan tidak boleh memuat tag HTML`);
+    error.statusCode = 400;
+    error.code = 'INVALID_INPUT';
+    throw error;
+  }
+  return normalized;
+};
+
+const normalizeCardUid = value => {
+  const uid = String(value || '').trim().toUpperCase();
+  if (!/^[0-9A-F]{2}(?::[0-9A-F]{2}){3,9}$/.test(uid)) {
+    const error = new Error('UID kartu NFC tidak valid');
+    error.statusCode = 400;
+    error.code = 'INVALID_CARD_UID';
+    throw error;
+  }
+  return uid;
+};
+
 export const getStudents = async (req, res, next) => {
   try {
     const schoolId = req.schoolId;
-    const students = await models.students.findBySchool(schoolId);
+    const allStudents = await models.students.findBySchool(schoolId);
+    const students = req.user?.role === 'PARENT' && !req.user.isDevelopmentMock
+      ? allStudents.filter(student => student.parent_id === req.user.id)
+      : allStudents;
     const enrichedStudents = await Promise.all(students.map(async student => {
       const parent = student.parent_id
         ? await models.users.findById(student.parent_id, schoolId)
@@ -23,7 +48,10 @@ export const getStudents = async (req, res, next) => {
 
 export const getPickupPersons = async (req, res, next) => {
   try {
-    const people = await models.pickupPersons.findBySchool(req.schoolId);
+    const allPeople = await models.pickupPersons.findBySchool(req.schoolId);
+    const people = req.user?.role === 'PARENT' && !req.user.isDevelopmentMock
+      ? allPeople.filter(person => person.parent_id === req.user.id)
+      : allPeople;
     res.json({ success: true, data: people });
   } catch (err) {
     next(err);
@@ -33,13 +61,23 @@ export const getPickupPersons = async (req, res, next) => {
 export const createStudent = async (req, res, next) => {
   try {
     const schoolId = req.schoolId;
-    const { full_name, class_name, student_number } = req.body;
+    const fullName = normalizeText(req.body.full_name, 'Nama siswa');
+    const className = normalizeText(req.body.class_name, 'Kelas', 40);
+    const studentNumber = normalizeText(req.body.student_number, 'Nomor siswa', 60);
+    const parentId = String(req.body.parent_id || 'usr-parent-1');
+    const parent = await models.users.findById(parentId, schoolId);
+    if (!parent || parent.role !== 'PARENT') {
+      return res.status(400).json({
+        error: 'INVALID_PARENT',
+        message: 'Akun orang tua tidak ditemukan pada sekolah ini'
+      });
+    }
     const newStudent = await models.students.create({
       school_id: schoolId,
-      parent_id: 'usr-parent-1',
-      full_name,
-      class_name,
-      student_number,
+      parent_id: parentId,
+      full_name: fullName,
+      class_name: className,
+      student_number: studentNumber,
       photo_url: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=150'
     });
     res.status(201).json({ success: true, message: 'Data siswa berhasil ditambahkan', data: newStudent });
@@ -101,6 +139,12 @@ export const updateStudentParentPhone = async (req, res, next) => {
     if (!student) {
       return res.status(404).json({ error: 'STUDENT_NOT_FOUND', message: 'Data siswa tidak ditemukan' });
     }
+    if (req.user?.role === 'PARENT' && !req.user.isDevelopmentMock && student.parent_id !== req.user.id) {
+      return res.status(403).json({
+        error: 'STUDENT_ACCESS_DENIED',
+        message: 'Orang tua tidak berhak mengubah data siswa ini'
+      });
+    }
 
     const parent = await models.users.updatePhone(student.parent_id, req.schoolId, phoneNumber);
     if (!parent) {
@@ -120,7 +164,15 @@ export const updateStudentParentPhone = async (req, res, next) => {
 export const updateCardStatus = async (req, res, next) => {
   try {
     const { card_uid, status } = req.body;
-    const card = await cardManagementService.updateCardStatus(card_uid, status, req.schoolId);
+    const cardUid = normalizeCardUid(card_uid);
+    const normalizedStatus = String(status || '').toUpperCase();
+    if (!['ACTIVE', 'INACTIVE', 'LOST'].includes(normalizedStatus)) {
+      return res.status(400).json({
+        error: 'INVALID_CARD_STATUS',
+        message: 'Status kartu harus ACTIVE, INACTIVE, atau LOST'
+      });
+    }
+    const card = await cardManagementService.updateCardStatus(cardUid, normalizedStatus, req.schoolId);
     if (!card) {
       return res.status(404).json({ error: 'CARD_NOT_FOUND', message: 'Kartu NFC tidak ditemukan' });
     }
@@ -138,10 +190,19 @@ export const bindNfcCard = async (req, res, next) => {
       return res.status(400).json({ error: 'INVALID_INPUT', message: 'UID Kartu NFC dan ID Penjemput wajib diisi' });
     }
 
-    const newCard = await cardManagementService.bindCardToPerson(card_uid, pickup_person_id, schoolId);
+    const cardUid = normalizeCardUid(card_uid);
+    const pickupPerson = await models.pickupPersons.findById(pickup_person_id, schoolId);
+    if (!pickupPerson || pickupPerson.status !== 'ACTIVE') {
+      return res.status(400).json({
+        error: 'INVALID_PICKUP_PERSON',
+        message: 'Penjemput aktif tidak ditemukan pada sekolah ini'
+      });
+    }
+
+    const newCard = await cardManagementService.bindCardToPerson(cardUid, pickup_person_id, schoolId);
     res.status(201).json({
       success: true,
-      message: `Kartu NFC [${card_uid}] berhasil ditautkan dan langsung aktif!`,
+      message: `Kartu NFC [${cardUid}] berhasil ditautkan dan langsung aktif!`,
       data: newCard
     });
   } catch (err) {

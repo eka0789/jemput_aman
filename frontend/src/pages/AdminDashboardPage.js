@@ -1,3 +1,5 @@
+import { escapeHtml as h } from '../utils/html.js';
+
 export function renderAdminDashboardPage(state) {
   const logs = state.pickupLogs || [];
   const totalVerified = logs.filter(l => l.status === 'VERIFIED').length;
@@ -93,17 +95,17 @@ export function renderAdminDashboardPage(state) {
               ${logs.map(log => `
                 <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" onmouseover="this.style.background='#f0fdfa'" onmouseout="this.style.background='white'">
                   <td style="padding: 0.85rem 1.15rem; font-weight: 800; color: #0f766e;">
-                    ${new Date(log.timestamp).toLocaleTimeString('id-ID')} WIB
+                    ${h(new Date(log.timestamp).toLocaleTimeString('id-ID'))} WIB
                   </td>
-                  <td style="padding: 0.85rem 1.15rem; font-weight: bold; color: #0f172a;">${log.student_name}</td>
-                  <td style="padding: 0.85rem 1.15rem;">${log.pickup_person_name}</td>
+                  <td style="padding: 0.85rem 1.15rem; font-weight: bold; color: #0f172a;">${h(log.student_name)}</td>
+                  <td style="padding: 0.85rem 1.15rem;">${h(log.pickup_person_name)}</td>
                   <td style="padding: 0.85rem 1.15rem;">
-                    <span class="badge badge-sky" style="font-size: 0.75rem;">${log.verification_method}</span>
+                    <span class="badge badge-sky" style="font-size: 0.75rem;">${h(log.verification_method)}</span>
                   </td>
                   <td style="padding: 0.85rem 1.15rem;">
-                    <span class="badge ${log.status === 'VERIFIED' ? 'badge-verified' : 'badge-blocked'}">${log.status}</span>
+                    <span class="badge ${log.status === 'VERIFIED' ? 'badge-verified' : 'badge-blocked'}">${h(log.status)}</span>
                   </td>
-                  <td style="padding: 0.85rem 1.15rem; color: #64748b; font-size: 0.82rem;">${log.notes}</td>
+                  <td style="padding: 0.85rem 1.15rem; color: #64748b; font-size: 0.82rem;">${h(log.notes)}</td>
                 </tr>
               `).join('')}
             </tbody>

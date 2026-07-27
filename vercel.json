@@ -1,11 +1,13 @@
 {
-  "services": {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "experimentalServices": {
     "frontend": {
-      "root": "frontend/",
-      "framework": "vite"
+      "entrypoint": "frontend",
+      "framework": "vite",
+      "routePrefix": "/"
     },
     "backend": {
-      "root": "backend/",
+      "entrypoint": "backend/src/app.js",
       "framework": "express"
     }
   },

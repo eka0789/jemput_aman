@@ -3,6 +3,7 @@ import { models } from '../../src/models/schema.js';
 import { pickupLogModel } from '../../src/models/pickupLog.js';
 import { nfcService } from '../../src/services/nfcService.js';
 import { storageService } from '../../src/services/storageService.js';
+import { scheduleModel } from '../../src/models/schedule.js';
 
 const schoolId = '1001-tk-ceria-salatiga';
 const activeCard = {
@@ -42,6 +43,7 @@ const mockSuccessfulLookup = () => {
     full_name: 'Ibu Dewi',
     phone_number: '081234567890'
   });
+  vi.spyOn(scheduleModel, 'findByStudent').mockResolvedValue([]);
   vi.spyOn(pickupLogModel, 'create').mockImplementation(async data => ({
     id: 'log-test',
     timestamp: '2026-07-24T12:00:00.000Z',
@@ -96,13 +98,15 @@ describe('NFC Verification Contract & Logic Tests', () => {
 
   it('should attach a face photo to an existing successful verification', async () => {
     vi.spyOn(storageService, 'uploadVerificationPhoto').mockResolvedValue({
-      path: `${schoolId}/verification/log-test/photo.jpg`,
-      publicUrl: 'https://project.supabase.co/storage/v1/object/public/images/photo.jpg'
+      path: `${schoolId}/verification/log-test/photo.jpg`
     });
     vi.spyOn(pickupLogModel, 'attachVerificationPhoto').mockResolvedValue({
       id: 'log-test',
-      verification_photo: 'https://project.supabase.co/storage/v1/object/public/images/photo.jpg'
+      verification_photo: `${schoolId}/verification/log-test/photo.jpg`
     });
+    vi.spyOn(storageService, 'getSignedUrl').mockResolvedValue(
+      'https://project.supabase.co/storage/v1/object/sign/images/photo.jpg'
+    );
 
     const result = await nfcService.attachVerificationPhoto({
       pickupLogId: 'log-test',
@@ -114,8 +118,8 @@ describe('NFC Verification Contract & Logic Tests', () => {
     expect(pickupLogModel.attachVerificationPhoto).toHaveBeenCalledWith(
       'log-test',
       schoolId,
-      'https://project.supabase.co/storage/v1/object/public/images/photo.jpg'
+      `${schoolId}/verification/log-test/photo.jpg`
     );
-    expect(result.verification_photo).toContain('/storage/v1/object/public/images/');
+    expect(result.verification_photo).toContain('/storage/v1/object/sign/images/');
   });
 });

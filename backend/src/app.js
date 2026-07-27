@@ -15,13 +15,29 @@ import {
   updateStudentParentPhone
 } from './controllers/managementController.js';
 import { tenantMiddleware } from './middlewares/tenant.js';
+import { authenticateJWT, requireRole } from './middlewares/auth.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { env } from './config/env.js';
 import { isSupabaseConfigured, supabase } from './config/supabase.js';
+import { rateLimit } from './middlewares/rateLimit.js';
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: env.CORS_ORIGINS.length
+    ? (origin, callback) => callback(
+        null,
+        !origin || env.CORS_ORIGINS.includes(origin)
+      )
+    : env.NODE_ENV !== 'production'
+}));
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(self), geolocation=(), microphone=()');
+  next();
+});
 app.use(express.json({ limit: '2mb' }));
 
 // API Status Health Check
@@ -45,32 +61,45 @@ app.get('/api/health', async (req, res) => {
   });
 });
 
+// All application APIs require an authenticated identity and tenant context.
+app.use('/api/v1', authenticateJWT, tenantMiddleware);
+
 // Pickup Verification Routes
 app.use('/api/v1/pickup', pickupRoutes);
 
 // Schedule Routes
-app.get('/api/v1/schedules/:studentId', tenantMiddleware, getStudentSchedule);
-app.put('/api/v1/schedules/:studentId', tenantMiddleware, updateStudentSchedule);
+app.get('/api/v1/schedules/:studentId', requireRole('PARENT', 'ADMIN', 'TEACHER'), getStudentSchedule);
+app.put('/api/v1/schedules/:studentId', requireRole('PARENT', 'ADMIN'), updateStudentSchedule);
 
 // Emergency OTP Routes
-app.post('/api/v1/pickup/request-otp', tenantMiddleware, requestEmergencyOtp);
-app.post('/api/v1/pickup/approve-otp', tenantMiddleware, approveEmergencyOtp);
-app.get('/api/v1/pickup/pending-otps', tenantMiddleware, getPendingOtps);
+app.post(
+  '/api/v1/pickup/request-otp',
+  rateLimit({ windowMs: 10 * 60 * 1000, max: 5, key: req => `otp-request:${req.ip}:${req.schoolId}` }),
+  requireRole('TEACHER', 'ADMIN'),
+  requestEmergencyOtp
+);
+app.post(
+  '/api/v1/pickup/approve-otp',
+  rateLimit({ windowMs: 10 * 60 * 1000, max: 10, key: req => `otp-approve:${req.ip}:${req.body?.otp_id || ''}` }),
+  requireRole('PARENT', 'TEACHER', 'ADMIN'),
+  approveEmergencyOtp
+);
+app.get('/api/v1/pickup/pending-otps', requireRole('PARENT', 'TEACHER', 'ADMIN'), getPendingOtps);
 
 // Report & Audit Routes
-app.get('/api/v1/reports/logs', tenantMiddleware, getPickupLogs);
-app.get('/api/v1/reports/export/excel', tenantMiddleware, exportExcelReport);
-app.get('/api/v1/reports/export/pdf', tenantMiddleware, exportPdfReport);
+app.get('/api/v1/reports/logs', requireRole('ADMIN', 'FOUNDATION'), getPickupLogs);
+app.get('/api/v1/reports/export/excel', requireRole('ADMIN', 'FOUNDATION'), exportExcelReport);
+app.get('/api/v1/reports/export/pdf', requireRole('ADMIN', 'FOUNDATION'), exportPdfReport);
 
 // Data & Card Management Routes
-app.get('/api/v1/students', tenantMiddleware, getStudents);
-app.post('/api/v1/students', tenantMiddleware, createStudent);
-app.patch('/api/v1/students/:studentId/photo', tenantMiddleware, updateStudentPhoto);
-app.patch('/api/v1/students/:studentId/parent-phone', tenantMiddleware, updateStudentParentPhone);
-app.get('/api/v1/pickup-persons', tenantMiddleware, getPickupPersons);
-app.patch('/api/v1/pickup-persons/:personId/photo', tenantMiddleware, updatePickupPersonPhoto);
-app.post('/api/v1/nfc/cards/status', tenantMiddleware, updateCardStatus);
-app.post('/api/v1/nfc/cards/bind', tenantMiddleware, bindNfcCard);
+app.get('/api/v1/students', requireRole('ADMIN', 'TEACHER', 'PARENT'), getStudents);
+app.post('/api/v1/students', requireRole('ADMIN'), createStudent);
+app.patch('/api/v1/students/:studentId/photo', requireRole('ADMIN'), updateStudentPhoto);
+app.patch('/api/v1/students/:studentId/parent-phone', requireRole('ADMIN', 'PARENT'), updateStudentParentPhone);
+app.get('/api/v1/pickup-persons', requireRole('ADMIN', 'TEACHER', 'PARENT'), getPickupPersons);
+app.patch('/api/v1/pickup-persons/:personId/photo', requireRole('ADMIN'), updatePickupPersonPhoto);
+app.post('/api/v1/nfc/cards/status', requireRole('ADMIN'), updateCardStatus);
+app.post('/api/v1/nfc/cards/bind', requireRole('ADMIN'), bindNfcCard);
 
 // Global Error Handler
 app.use(errorHandler);

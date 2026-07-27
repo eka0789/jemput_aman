@@ -1,6 +1,25 @@
 import { models } from '../models/schema.js';
 import { pickupLogModel } from '../models/pickupLog.js';
 import { storageService } from './storageService.js';
+import { scheduleModel } from '../models/schedule.js';
+import { env } from '../config/env.js';
+
+const DAY_CODES = {
+  Monday: 'MON',
+  Tuesday: 'TUE',
+  Wednesday: 'WED',
+  Thursday: 'THU',
+  Friday: 'FRI',
+  Saturday: 'SAT',
+  Sunday: 'SUN'
+};
+
+const dayCodeFor = date => DAY_CODES[
+  new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
+    timeZone: env.APP_TIME_ZONE
+  }).format(date)
+];
 
 const storeVerificationPhoto = async ({ pickupLogId, schoolId, facePhoto }) => {
   const uploaded = await storageService.uploadVerificationPhoto({
@@ -13,7 +32,7 @@ const storeVerificationPhoto = async ({ pickupLogId, schoolId, facePhoto }) => {
     const log = await pickupLogModel.attachVerificationPhoto(
       pickupLogId,
       schoolId,
-      uploaded.publicUrl
+      uploaded.path
     );
 
     if (!log) {
@@ -33,7 +52,14 @@ const storeVerificationPhoto = async ({ pickupLogId, schoolId, facePhoto }) => {
 };
 
 export const nfcService = {
-  verifyTap: async ({ cardUid, studentId, schoolId, teacherId = 'usr-teacher-1', facePhoto = null }) => {
+  verifyTap: async ({
+    cardUid,
+    studentId,
+    schoolId,
+    teacherId = 'usr-teacher-1',
+    facePhoto = null,
+    verificationDate = new Date()
+  }) => {
     // 1. Find NFC card in store
     const card = await models.nfcCards.findByUid(cardUid, schoolId);
 
@@ -135,7 +161,32 @@ export const nfcService = {
       targetStudent = await models.students.findById(auths[0].student_id, schoolId);
     }
 
-    // 4. Record successful audit log
+    // 4. Enforce the configured weekly pickup assignment.
+    const schedules = await scheduleModel.findByStudent(targetStudent.id);
+    const currentDay = dayCodeFor(verificationDate);
+    const scheduledToday = schedules.find(item => item.day_of_week === currentDay);
+    if (schedules.length > 0 && scheduledToday?.pickup_person_id !== pickupPerson.id) {
+      await pickupLogModel.create({
+        school_id: schoolId,
+        student_id: targetStudent.id,
+        student_name: targetStudent.full_name,
+        pickup_person_id: pickupPerson.id,
+        pickup_person_name: `${pickupPerson.full_name} (${pickupPerson.relationship})`,
+        nfc_card_id: card.id,
+        duty_teacher_id: teacherId,
+        verification_method: 'NFC_TAP',
+        status: 'OUT_OF_SCHEDULE',
+        notes: `Penjemput tidak sesuai jadwal ${currentDay}`
+      });
+      return {
+        status: 'OUT_OF_SCHEDULE',
+        code: 'PICKUP_PERSON_OUT_OF_SCHEDULE',
+        message: 'Penjemput Tidak Sesuai Jadwal Hari Ini',
+        alert_dispatched: true
+      };
+    }
+
+    // 5. Record successful audit log
     const parent = await models.users.findById(targetStudent.parent_id, schoolId);
     let log = await pickupLogModel.create({
       school_id: schoolId,
@@ -185,6 +236,8 @@ export const nfcService = {
         timestamp: log.timestamp,
         notification_sent: false,
         verification_photo: log.verification_photo
+          ? await storageService.getSignedUrl(log.verification_photo)
+          : null
       }
     };
   },
@@ -197,7 +250,7 @@ export const nfcService = {
 
     return {
       pickup_log_id: log.id,
-      verification_photo: log.verification_photo
+      verification_photo: await storageService.getSignedUrl(log.verification_photo)
     };
   }
 };

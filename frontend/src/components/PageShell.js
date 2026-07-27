@@ -53,6 +53,9 @@ export function renderPageShell(activeTab, isKioskLocked) {
             <button class="btn ${activeTab === 'parent' ? 'btn-primary' : 'btn-secondary'}" data-tab="parent" style="font-size: 0.88rem; padding: 0.6rem 1.25rem;">
               👨‍👩‍👧 Portal Orang Tua
             </button>
+            <button class="btn ${activeTab === 'schedule' ? 'btn-primary' : 'btn-secondary'}" data-tab="schedule" style="font-size: 0.88rem; padding: 0.6rem 1.25rem;">
+              📅 Jadwal Penjemputan
+            </button>
             <button class="btn ${activeTab === 'admin' ? 'btn-primary' : 'btn-secondary'}" data-tab="admin" style="font-size: 0.88rem; padding: 0.6rem 1.25rem;">
               📊 Dashboard Admin
             </button>

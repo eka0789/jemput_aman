@@ -5,15 +5,53 @@ import { renderParentPortalPage } from './pages/ParentPortalPage.js';
 import { renderAdminDashboardPage } from './pages/AdminDashboardPage.js';
 import { renderDataManagementPage } from './pages/DataManagementPage.js';
 import { renderFoundationDashboardPage } from './pages/FoundationDashboardPage.js';
+import { renderScheduleConfigPage } from './pages/ScheduleConfigPage.js';
+import { offlineQueue } from './services/offlineQueueService.js';
+import { webNfc } from './services/webNfcService.js';
+import { registerServiceWorker } from './serviceWorker.js';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL
   || (import.meta.env.DEV ? 'http://localhost:3000/api/v1' : '/api/v1');
+const SCHOOL_ID = import.meta.env.VITE_SCHOOL_ID || '1001-tk-ceria-salatiga';
+
+const getAuthToken = () => localStorage.getItem('jemput_aman_access_token');
+const getTokenRole = () => {
+  const token = getAuthToken();
+  if (!token) return null;
+  try {
+    return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).role;
+  } catch {
+    return null;
+  }
+};
+
+const apiFetch = (path, options = {}, developmentRole = 'TEACHER') => {
+  const token = getAuthToken();
+  const headers = new Headers(options.headers || {});
+  headers.set('X-School-ID', SCHOOL_ID);
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  if (import.meta.env.DEV && !token) headers.set('X-Mock-Role', developmentRole);
+  return fetch(`${API_BASE}${path}`, { ...options, headers });
+};
+
+const readJsonResponse = async (response, fallbackMessage) => {
+  let result;
+  try {
+    result = await response.json();
+  } catch {
+    throw new Error(fallbackMessage);
+  }
+  if (!response.ok) throw new Error(result.message || fallbackMessage);
+  return result;
+};
 
 const state = {
   activeTab: 'reader', // reader, parent, admin, data, foundation
   dataSubTab: 'nfc_bind',
+  scheduleStudentId: '1111',
+  weeklySchedules: [],
   isKioskLocked: true, // DEFAULT TRUE FOR GATE TABLET SECURITY!
-  securityPin: '1234',
+  securityPin: import.meta.env.VITE_KIOSK_PIN || (import.meta.env.DEV ? '1234' : ''),
   showAddStudent: false,
   lastVerification: null,
   cameraError: '',
@@ -70,6 +108,8 @@ function render() {
     contentHtml = renderDataManagementPage(state);
   } else if (state.activeTab === 'foundation') {
     contentHtml = renderFoundationDashboardPage(state);
+  } else if (state.activeTab === 'schedule') {
+    contentHtml = renderScheduleConfigPage(state);
   }
 
   app.innerHTML = `
@@ -86,6 +126,8 @@ function render() {
       }
       state.activeTab = e.currentTarget.getAttribute('data-tab');
       render();
+      if (state.activeTab === 'schedule') loadStudentSchedule();
+      if (state.activeTab === 'parent') loadPendingOtps();
     });
   });
 }
@@ -98,8 +140,64 @@ window.lockKioskMode = () => {
   render();
 };
 
+const loadPendingOtps = async () => {
+  try {
+    const response = await apiFetch('/pickup/pending-otps', {}, 'PARENT');
+    const result = await readJsonResponse(response, 'Permintaan OTP gagal dimuat.');
+    state.pendingOtps = result.data;
+    render();
+  } catch (error) {
+    console.warn('Pending OTP sync unavailable:', error);
+  }
+};
+
+const loadStudentSchedule = async () => {
+  try {
+    const response = await apiFetch(`/schedules/${state.scheduleStudentId}`, {}, 'PARENT');
+    const result = await readJsonResponse(response, 'Jadwal siswa gagal dimuat.');
+    state.weeklySchedules = result.data;
+    render();
+  } catch (error) {
+    alert(error.message || 'Jadwal siswa gagal dimuat.');
+  }
+};
+
+window.changeScheduleStudent = async (studentId) => {
+  state.scheduleStudentId = studentId;
+  await loadStudentSchedule();
+};
+
+window.saveWeeklySchedule = async () => {
+  const schedules = [...document.querySelectorAll('[data-schedule-day]')]
+    .filter(select => select.value)
+    .map(select => ({
+      day_of_week: select.dataset.scheduleDay,
+      pickup_person_id: select.value
+    }));
+  try {
+    const response = await apiFetch(`/schedules/${state.scheduleStudentId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ schedules })
+    }, 'PARENT');
+    const result = await readJsonResponse(response, 'Jadwal gagal disimpan.');
+    state.weeklySchedules = result.data;
+    alert(result.message);
+    render();
+  } catch (error) {
+    alert(error.message || 'Jadwal gagal disimpan.');
+  }
+};
+
 window.promptUnlockKiosk = () => {
-  const inputPin = prompt('🔑 Masukkan 4-Digit PIN Keamanan Admin/Kepala Sekolah untuk Buka Kunci (Default PIN: 1234):');
+  const role = getTokenRole();
+  if (!import.meta.env.DEV && !['ADMIN', 'FOUNDATION'].includes(role)) {
+    alert('Akses penuh hanya dapat dibuka oleh akun Admin atau Yayasan yang telah login.');
+    return;
+  }
+  const inputPin = import.meta.env.DEV
+    ? prompt('Masukkan PIN kiosk development:')
+    : state.securityPin;
   if (inputPin === state.securityPin) {
     state.isKioskLocked = false;
     alert('🔓 AKSES DIBUKA! Seluruh menu Admin, Data Siswa, & Laporan Yayasan sekarang dapat diakses.');
@@ -169,19 +267,14 @@ window.selectProfilePhoto = (profileType, profileId) => {
       const endpoint = isStudent
         ? `${API_BASE}/students/${profileId}/photo`
         : `${API_BASE}/pickup-persons/${profileId}/photo`;
-      const response = await fetch(endpoint, {
+      const response = await apiFetch(endpoint.replace(API_BASE, ''), {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
-          'X-School-ID': '1001-tk-ceria-salatiga'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ photo_url: photoUrl })
-      });
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || 'Foto gagal disimpan.');
-      }
+      }, 'ADMIN');
+      const result = await readJsonResponse(response, 'Foto gagal disimpan.');
 
       const profiles = isStudent ? state.students : state.pickupPersons;
       const profile = profiles.find(item => item.id === profileId);
@@ -207,16 +300,14 @@ window.editParentWhatsapp = async (studentId) => {
   if (phoneNumber === null) return;
 
   try {
-    const response = await fetch(`${API_BASE}/students/${studentId}/parent-phone`, {
+    const response = await apiFetch(`/students/${studentId}/parent-phone`, {
       method: 'PATCH',
       headers: {
-        'Content-Type': 'application/json',
-        'X-School-ID': '1001-tk-ceria-salatiga'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({ phone_number: phoneNumber })
-    });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.message || 'Nomor WhatsApp gagal disimpan.');
+    }, 'ADMIN');
+    const result = await readJsonResponse(response, 'Nomor WhatsApp gagal disimpan.');
 
     state.students
       .filter(item => item.parent_id === result.data.parent_id)
@@ -238,34 +329,31 @@ window.submitNewStudent = async () => {
     return;
   }
 
-  let savedStudent = null;
   try {
-    const response = await fetch(`${API_BASE}/students`, {
+    const response = await apiFetch('/students', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'X-School-ID': '1001-tk-ceria-salatiga'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({ full_name: name, class_name: className, student_number: `NIS-${Date.now()}` })
+    }, 'ADMIN');
+    const result = await readJsonResponse(response, 'Data siswa gagal disimpan.');
+    const savedStudent = result.data;
+    state.students.push({
+      id: savedStudent.id,
+      parent_id: savedStudent.parent_id,
+      name: savedStudent.full_name,
+      class_name: savedStudent.class_name,
+      parent_name: parentName,
+      phone: '-',
+      photo_url: savedStudent.photo_url
     });
-    const result = await response.json();
-    if (response.ok) savedStudent = result.data;
-  } catch (e) {
-    console.log('Student add fallback', e);
+    state.showAddStudent = false;
+    alert(result.message);
+    render();
+  } catch (error) {
+    alert(error.message || 'Data siswa gagal disimpan.');
   }
-
-  state.students.push({
-    id: savedStudent?.id || `std-${Date.now()}`,
-    name: name,
-    class_name: className,
-    parent_name: parentName,
-    phone: '081234567890',
-    photo_url: savedStudent?.photo_url || 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=150'
-  });
-
-  state.showAddStudent = false;
-  alert(`🎉 Sukses! Murid [${name}] berhasil didaftarkan.`);
-  render();
 };
 
 // Tap-to-Bind Registration Handlers
@@ -277,46 +365,44 @@ window.autoFillNewNfcUid = () => {
 
 window.submitFullNfcRegistration = async () => {
   const uid = state.newCardUid || document.getElementById('reg_nfc_uid')?.value;
-  const pickupName = document.getElementById('reg_pickup_name')?.value;
-  const relationSelect = document.getElementById('reg_pickup_relation');
+  const pickupSelect = document.getElementById('reg_pickup_person_id');
   const studentSelect = document.getElementById('reg_student_id');
 
   if (!uid) {
     alert('Silakan tempelkan kartu NFC atau klik tombol simulasi tap otomatis untuk membaca UID kartu!');
     return;
   }
-  if (!pickupName) {
-    alert('Silakan masukkan nama penjemput (misal: Pak Joko / Ayah Budi)!');
+  if (!pickupSelect?.value) {
+    alert('Silakan pilih penjemput terdaftar.');
     return;
   }
 
-  const relation = relationSelect?.value || 'Penjemput Sah';
+  const pickupPerson = state.pickupPersons.find(person => person.id === pickupSelect.value);
   const studentName = studentSelect?.options[studentSelect.selectedIndex]?.text || 'Siswa';
-  const holderText = `${pickupName} (${relation})`;
+  const holderText = `${pickupPerson.name} (${pickupPerson.relationship})`;
 
   try {
-    await fetch(`${API_BASE}/nfc/cards/bind`, {
+    const response = await apiFetch('/nfc/cards/bind', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'X-School-ID': '1001-tk-ceria-salatiga'
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ card_uid: uid, pickup_person_id: '2222' })
+      body: JSON.stringify({ card_uid: uid, pickup_person_id: pickupPerson.id })
+    }, 'ADMIN');
+    const result = await readJsonResponse(response, 'Kartu NFC gagal ditautkan.');
+    state.cards.unshift({
+      uid: result.data.card_uid,
+      pickup_person_id: result.data.pickup_person_id,
+      holder: holderText,
+      status: result.data.status,
+      student: studentName
     });
-  } catch (e) {
-    console.log('API bind call fallback', e);
+    state.newCardUid = '';
+    alert(result.message);
+    render();
+  } catch (error) {
+    alert(error.message || 'Kartu NFC gagal ditautkan.');
   }
-
-  state.cards.unshift({
-    uid: uid,
-    holder: holderText,
-    status: 'ACTIVE',
-    student: studentName
-  });
-
-  state.newCardUid = '';
-  alert(`🎉 REGISTRASI OTOMATIS BERHASIL!\n\nKartu NFC [${uid}] telah ditautkan dan SINKRON 100% dengan profil Penjemput: ${holderText}.\n\nKartu fisik ini sekarang langsung aktif dan dapat di-tap di reader gerbang sekolah!`);
-  render();
 };
 
 // Window Global Actions for Interactivity & Demo
@@ -409,19 +495,14 @@ const storeVerificationPhoto = async (verification, facePhoto) => {
     return;
   }
 
-  const response = await fetch(`${API_BASE}/pickup/verification-photo`, {
+  const response = await apiFetch('/pickup/verification-photo', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'X-School-ID': '1001-tk-ceria-salatiga'
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify({ pickup_log_id: pickupLogId, face_photo: facePhoto })
-  });
-  const result = await response.json();
-
-  if (!response.ok) {
-    throw new Error(result.message || 'Foto gagal disimpan ke data verifikasi.');
-  }
+  }, 'TEACHER');
+  const result = await readJsonResponse(response, 'Foto gagal disimpan ke data verifikasi.');
 
   verification.data.verification_photo = result.data.verification_photo;
 };
@@ -462,14 +543,13 @@ window.simulateNfcTap = async (cardUid) => {
   }
 
   try {
-    const response = await fetch(`${API_BASE}/pickup/verify-nfc`, {
+    const response = await apiFetch('/pickup/verify-nfc', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'X-School-ID': '1001-tk-ceria-salatiga'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({ card_uid: cardUid })
-    });
+    }, 'TEACHER');
     const result = await response.json();
     state.lastVerification = result;
     state.cameraError = '';
@@ -490,46 +570,16 @@ window.simulateNfcTap = async (cardUid) => {
     }
     return;
   } catch (err) {
-    if (cardUid === '04:A2:8B:12:FE:67:80') {
-      const studentPhoto = state.students.find(student => student.id === '1111')?.photo_url;
-      const pickupPhoto = state.pickupPersons.find(person => person.id === '2222')?.photo_url;
-      state.lastVerification = {
-        status: 'VERIFIED',
-        message: 'Penjemputan Terverifikasi Sah (Ayah Kandung)',
-        data: {
-          student: { full_name: 'Ananda Bintang', class_name: 'TK-A1', photo_url: studentPhoto },
-          pickup_person: { full_name: 'Budi Santoso', relationship: 'Ayah Kandung', phone_number: '081234567890', photo_url: pickupPhoto },
-          timestamp: new Date().toISOString()
-        }
-      };
-    } else if (cardUid === '04:B3:9C:23:FF:78:91') {
-      const studentPhoto = state.students.find(student => student.id === '1111')?.photo_url;
-      const pickupPhoto = state.pickupPersons.find(person => person.id === '2223')?.photo_url;
-      state.lastVerification = {
-        status: 'VERIFIED',
-        message: 'Penjemputan Terverifikasi Sah (Supir Keluarga)',
-        data: {
-          student: { full_name: 'Ananda Bintang', class_name: 'TK-A1', photo_url: studentPhoto },
-          pickup_person: { full_name: 'Pak Joko', relationship: 'Supir Keluarga', phone_number: '081987654321', photo_url: pickupPhoto },
-          timestamp: new Date().toISOString()
-        }
-      };
-    } else if (localCard) {
-      state.lastVerification = {
-        status: 'VERIFIED',
-        message: `Penjemputan Terverifikasi Sah (${localCard.holder})`,
-        data: {
-          student: { full_name: localCard.student, class_name: 'TK-A1', photo_url: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=150' },
-          pickup_person: { full_name: localCard.holder, relationship: 'Penjemput Terdaftar', phone_number: '081234567890', photo_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150' },
-          timestamp: new Date().toISOString()
-        }
-      };
-    } else {
-      state.lastVerification = {
-        status: 'BLOCKED',
-        message: 'AKSES DITOLAK: Kartu NFC Tidak Terdaftar atau Hilang!'
-      };
+    try {
+      await offlineQueue.enqueueTap({ card_uid: cardUid, school_id: SCHOOL_ID });
+    } catch {
+      // The visible result remains blocked even if the local audit queue is unavailable.
     }
+    state.lastVerification = {
+      status: 'BLOCKED',
+      code: 'VERIFICATION_SERVICE_UNAVAILABLE',
+      message: `VERIFIKASI GAGAL: ${err.message || 'Backend tidak dapat dihubungi'}. Jangan izinkan siswa pulang sebelum pemeriksaan manual.`
+    };
   }
   state.cameraError = '';
   render();
@@ -538,56 +588,111 @@ window.simulateNfcTap = async (cardUid) => {
   }
 };
 
-window.openEmergencyModal = () => {
-  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-  state.pendingOtps.push({
-    id: `otp-${Date.now()}`,
-    student_name: 'Ananda Bintang',
-    pickup_person_name: 'Budi Santoso (Lupa Kartu NFC)',
-    otp_code: otpCode
-  });
-  alert(`Permintaan OTP Darurat [${otpCode}] telah dikirim ke Aplikasi Orang Tua!\n\n(Buka Kunci Admin PIN 1234 jika ingin berpindah ke tab 'Portal Orang Tua').`);
-  render();
+window.startNfcReader = async () => {
+  const started = await webNfc.startScan(
+    card => window.simulateNfcTap(card.serialNumber),
+    message => alert(message)
+  );
+  if (started) alert('Reader NFC aktif. Tempelkan kartu pada perangkat.');
 };
 
-window.approveOtp = (otpId) => {
-  state.pendingOtps = state.pendingOtps.filter(o => o.id !== otpId);
-  state.pickupLogs.unshift({
-    id: `log-${Date.now()}`,
-    student_name: 'Ananda Bintang',
-    pickup_person_name: 'Budi Santoso (Ayah Kandung)',
-    verification_method: 'EMERGENCY_OTP',
-    status: 'VERIFIED',
-    timestamp: new Date().toISOString(),
-    notes: 'Disetujui Orang Tua via OTP Darurat'
-  });
-  alert('✅ Penjemputan Darurat Berhasil Disetujui!');
-  render();
-};
-
-window.exportExcelReport = () => {
-  window.open(`${API_BASE}/reports/export/excel`, '_blank');
-};
-
-window.exportPdfReport = () => {
-  window.open(`${API_BASE}/reports/export/pdf`, '_blank');
-};
-
-window.toggleCardStatus = (uid, status) => {
-  const card = state.cards.find(c => c.uid === uid);
-  if (card) {
-    card.status = status;
+window.openEmergencyModal = async () => {
+  try {
+    const response = await apiFetch('/pickup/request-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ student_id: '1111', pickup_person_id: '2222' })
+    }, 'TEACHER');
+    const result = await readJsonResponse(response, 'Permintaan OTP gagal dibuat.');
+    state.pendingOtps.unshift({
+      ...result.data,
+      student_name: 'Ananda Bintang',
+      pickup_person_name: 'Budi Santoso (Lupa Kartu NFC)'
+    });
+    const debugCode = result.data.debug_otp_code
+      ? `\nKode development: ${result.data.debug_otp_code}`
+      : '';
+    alert(`${result.message}${debugCode}`);
+    render();
+  } catch (error) {
+    alert(error.message || 'Permintaan OTP gagal dibuat.');
   }
-  alert(`Status Kartu NFC [${uid}] berhasil diubah menjadi ${status}`);
-  render();
+};
+
+window.approveOtp = async (otpId) => {
+  const otp = state.pendingOtps.find(item => item.id === otpId);
+  const parentOneClickApproval = !import.meta.env.DEV && getTokenRole() === 'PARENT';
+  const code = parentOneClickApproval
+    ? null
+    : prompt('Masukkan kode OTP 6 digit:', otp?.debug_otp_code || '');
+  if (!parentOneClickApproval && code === null) return;
+  try {
+    const response = await apiFetch('/pickup/approve-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ otp_id: otpId, otp_code: code })
+    }, 'PARENT');
+    const result = await readJsonResponse(response, 'OTP gagal disetujui.');
+    state.pendingOtps = state.pendingOtps.filter(item => item.id !== otpId);
+    state.pickupLogs.unshift({
+      id: `log-${Date.now()}`,
+      student_name: otp?.student_name || 'Siswa',
+      pickup_person_name: otp?.pickup_person_name || 'Penjemput',
+      verification_method: 'EMERGENCY_OTP',
+      status: 'VERIFIED',
+      timestamp: new Date().toISOString(),
+      notes: 'Disetujui menggunakan OTP valid'
+    });
+    alert(result.message);
+    render();
+  } catch (error) {
+    alert(error.message || 'OTP gagal disetujui.');
+  }
+};
+
+const downloadReport = async (format) => {
+  try {
+    const response = await apiFetch(`/reports/export/${format}`, {}, 'ADMIN');
+    if (!response.ok) {
+      await readJsonResponse(response, 'Laporan gagal diunduh.');
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `Laporan_Kepulangan.${format === 'excel' ? 'xlsx' : 'pdf'}`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    alert(error.message || 'Laporan gagal diunduh.');
+  }
+};
+
+window.exportExcelReport = () => downloadReport('excel');
+window.exportPdfReport = () => downloadReport('pdf');
+
+window.toggleCardStatus = async (uid, status) => {
+  try {
+    const response = await apiFetch('/nfc/cards/status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ card_uid: uid, status })
+    }, 'ADMIN');
+    const result = await readJsonResponse(response, 'Status kartu gagal diperbarui.');
+    const card = state.cards.find(item => item.uid === uid);
+    if (card) card.status = result.data.status;
+    alert(result.message);
+    render();
+  } catch (error) {
+    alert(error.message || 'Status kartu gagal diperbarui.');
+  }
 };
 
 const hydrateProfileData = async () => {
   try {
-    const headers = { 'X-School-ID': '1001-tk-ceria-salatiga' };
     const [studentsResponse, peopleResponse] = await Promise.all([
-      fetch(`${API_BASE}/students`, { headers }),
-      fetch(`${API_BASE}/pickup-persons`, { headers })
+      apiFetch('/students', {}, 'TEACHER'),
+      apiFetch('/pickup-persons', {}, 'TEACHER')
     ]);
 
     if (studentsResponse.ok) {
@@ -624,3 +729,4 @@ const hydrateProfileData = async () => {
 // Initial Render
 render();
 hydrateProfileData();
+registerServiceWorker().catch(error => console.warn('Service worker registration failed:', error));

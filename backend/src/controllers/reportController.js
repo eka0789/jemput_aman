@@ -1,11 +1,18 @@
 import { reportService } from '../services/reportService.js';
 import { pickupLogModel } from '../models/pickupLog.js';
+import { storageService } from '../services/storageService.js';
 
 export const getPickupLogs = async (req, res, next) => {
   try {
     const schoolId = req.schoolId;
     const logs = await pickupLogModel.findBySchool(schoolId);
-    res.json({ success: true, data: logs });
+    const safeLogs = await Promise.all(logs.map(async log => ({
+      ...log,
+      verification_photo: log.verification_photo
+        ? await storageService.getSignedUrl(log.verification_photo)
+        : null
+    })));
+    res.json({ success: true, data: safeLogs });
   } catch (err) {
     next(err);
   }

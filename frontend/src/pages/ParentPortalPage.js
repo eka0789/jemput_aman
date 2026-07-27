@@ -1,3 +1,5 @@
+import { escapeHtml as h } from '../utils/html.js';
+
 export function renderParentPortalPage(state) {
   const pendingOtps = state.pendingOtps || [];
   const logs = state.pickupLogs || [];
@@ -47,11 +49,11 @@ export function renderParentPortalPage(state) {
 
               ${pendingOtps.map(otp => `
                 <div style="background: white; border-radius: 14px; padding: 1.25rem; margin-bottom: 0.75rem; border: 1px solid #fcd34d; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);">
-                  <div style="font-weight: 800; font-size: 1rem; color: #0f766e;">Siswa: ${otp.student_name}</div>
-                  <div style="font-size: 0.85rem; color: #64748b; margin-top: 0.15rem;">Penjemput: ${otp.pickup_person_name}</div>
+                  <div style="font-weight: 800; font-size: 1rem; color: #0f766e;">Siswa: ${h(otp.student_name)}</div>
+                  <div style="font-size: 0.85rem; color: #64748b; margin-top: 0.15rem;">Penjemput: ${h(otp.pickup_person_name)}</div>
                   
                   <div style="font-family: 'Fredoka', sans-serif; font-size: 1.8rem; font-weight: bold; color: #d97706; letter-spacing: 6px; margin: 0.85rem 0; text-align: center; background: #fffbeb; padding: 0.5rem; border-radius: 10px; border: 1.5px dashed #f59e0b;">
-                    ${otp.otp_code}
+                    KODE DIKIRIM
                   </div>
 
                   <button class="btn btn-amber" onclick="window.approveOtp('${otp.id}')" style="width: 100%; font-size: 0.9rem;">
@@ -86,11 +88,11 @@ export function renderParentPortalPage(state) {
                 <div>
                   <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.35rem;">
                     <span style="font-size: 1.2rem;">${log.status === 'VERIFIED' ? '🛡️' : '🚨'}</span>
-                    <strong style="font-size: 1.05rem; color: #0f172a;">${log.student_name}</strong>
-                    <span class="badge ${log.status === 'VERIFIED' ? 'badge-verified' : 'badge-blocked'}" style="font-size: 0.75rem;">${log.status}</span>
+                    <strong style="font-size: 1.05rem; color: #0f172a;">${h(log.student_name)}</strong>
+                    <span class="badge ${log.status === 'VERIFIED' ? 'badge-verified' : 'badge-blocked'}" style="font-size: 0.75rem;">${h(log.status)}</span>
                   </div>
                   <div style="font-size: 0.88rem; color: #475569;">
-                    Dijemput oleh: <strong>${log.pickup_person_name}</strong> (${log.verification_method})
+                    Dijemput oleh: <strong>${h(log.pickup_person_name)}</strong> (${h(log.verification_method)})
                   </div>
                 </div>
                 <div style="text-align: right;">

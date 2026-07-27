@@ -8,15 +8,16 @@ export const verifyNfcTap = async (req, res, next) => {
     const schoolId = req.schoolId;
     const teacherId = req.user?.id || 'usr-teacher-1';
 
-    if (!card_uid) {
+    const normalizedCardUid = String(card_uid || '').trim().toUpperCase();
+    if (!/^[0-9A-F]{2}(?::[0-9A-F]{2}){3,9}$/.test(normalizedCardUid)) {
       return res.status(400).json({
         error: 'INVALID_INPUT',
-        message: 'UID Kartu NFC wajib dikirimkan dalam payload'
+        message: 'UID Kartu NFC wajib dikirimkan dalam format yang valid'
       });
     }
 
     const result = await nfcService.verifyTap({
-      cardUid: card_uid,
+      cardUid: normalizedCardUid,
       studentId: student_id,
       schoolId,
       teacherId

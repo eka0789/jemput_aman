@@ -1,19 +1,75 @@
 import { emergencyOtpModel } from '../models/emergencyOtp.js';
 import { pickupLogModel } from '../models/pickupLog.js';
+import { models } from '../models/schema.js';
+import { createHash, randomInt } from 'crypto';
+import { whatsappService } from './whatsappService.js';
+
+const hashOtp = code => createHash('sha256').update(String(code)).digest('hex');
 
 export const otpService = {
   requestOtp: async ({ studentId, pickupPersonId, schoolId }) => {
-    const randomOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const [student, pickupPerson, authorization] = await Promise.all([
+      models.students.findById(studentId, schoolId),
+      models.pickupPersons.findById(pickupPersonId, schoolId),
+      models.authorizations.findValidAuth(studentId, pickupPersonId)
+    ]);
+    if (
+      !student
+      || student.status !== 'ACTIVE'
+      || !pickupPerson
+      || pickupPerson.status !== 'ACTIVE'
+      || !authorization
+    ) {
+      const error = new Error('Siswa dan penjemput harus aktif serta memiliki otorisasi yang sah');
+      error.statusCode = 400;
+      error.code = 'INVALID_OTP_REQUEST';
+      throw error;
+    }
+
+    const randomOtp = randomInt(100000, 1000000).toString();
     const otp = await emergencyOtpModel.create({
       school_id: schoolId,
       student_id: studentId,
       pickup_person_id: pickupPersonId,
-      otp_code: randomOtp
+      otp_code: hashOtp(randomOtp)
     });
-    return otp;
+    const parent = await models.users.findById(student.parent_id, schoolId);
+    const notification = await whatsappService.sendOtpNotification(parent?.phone_number, {
+      studentName: student.full_name,
+      pickupPersonName: pickupPerson.full_name,
+      otpCode: randomOtp,
+      expiresInMinutes: 10
+    });
+    return { ...otp, otp_code: randomOtp, notification };
   },
-  approveOtp: async (otpId, teacherId = 'usr-teacher-1') => {
-    const otp = await emergencyOtpModel.approve(otpId);
+  approveOtp: async ({
+    otpId,
+    otpCode,
+    schoolId,
+    user,
+    teacherId = 'usr-teacher-1'
+  }) => {
+    const pendingOtp = await emergencyOtpModel.findById(otpId, schoolId);
+    if (!pendingOtp || pendingOtp.status !== 'PENDING' || new Date(pendingOtp.expires_at) <= new Date()) {
+      return null;
+    }
+
+    if (user?.role === 'PARENT' && !user.isDevelopmentMock) {
+      const student = await models.students.findById(pendingOtp.student_id, schoolId);
+      if (!student || student.parent_id !== user.id) {
+        const error = new Error('Orang tua tidak berhak menyetujui OTP siswa ini');
+        error.statusCode = 403;
+        error.code = 'OTP_ACCESS_DENIED';
+        throw error;
+      }
+    }
+
+    const parentOneClickApproval = user?.role === 'PARENT' && !user.isDevelopmentMock;
+    const otp = await emergencyOtpModel.approve({
+      id: otpId,
+      schoolId,
+      otpCodeHash: parentOneClickApproval ? null : hashOtp(otpCode)
+    });
     if (!otp) return null;
 
     // Log verified emergency pickup
@@ -27,7 +83,7 @@ export const otpService = {
       duty_teacher_id: teacherId,
       verification_method: 'EMERGENCY_OTP',
       status: 'VERIFIED',
-      notes: `Verifikasi darurat tanpa kartu NFC disetujui via OTP [${otp.otp_code}]`
+      notes: 'Verifikasi darurat tanpa kartu NFC disetujui menggunakan OTP valid'
     });
 
     return otp;

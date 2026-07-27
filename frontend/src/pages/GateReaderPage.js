@@ -1,3 +1,5 @@
+import { escapeHtml as h } from '../utils/html.js';
+
 export function renderGateReaderPage(state) {
   const isVerified = state.lastVerification?.status === 'VERIFIED';
   const isBlocked = state.lastVerification?.status === 'BLOCKED';
@@ -31,6 +33,9 @@ export function renderGateReaderPage(state) {
             <div style="display: inline-block; background: rgba(255,255,255,0.12); padding: 0.4rem 1rem; border-radius: 9999px; font-size: 0.78rem; color: #99f6e4;">
               Web NFC Engine v1.0 • Latensi &lt; 2s
             </div>
+            <button class="btn btn-amber" onclick="window.startNfcReader()" style="width: 100%; margin-top: 1rem;">
+              Aktifkan Reader NFC Perangkat
+            </button>
           </div>
 
           <!-- Simulator Quick Tap Buttons -->
@@ -106,22 +111,22 @@ export function renderGateReaderPage(state) {
                 <div style="background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border: 2px solid #a7f3d0; border-radius: 16px; padding: 1.5rem; margin-bottom: 1rem;">
                   <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
                     <span style="font-size: 1.5rem;">✨</span>
-                    <h4 style="color: #065f46; margin: 0; font-size: 1.15rem;">${state.lastVerification.message}</h4>
+                    <h4 style="color: #065f46; margin: 0; font-size: 1.15rem;">${h(state.lastVerification.message)}</h4>
                   </div>
                   
                   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: center;">
                     <!-- Student Profile Box -->
                     <div style="text-align: center; background: white; padding: 1rem; border-radius: 14px; border: 1px solid #a7f3d0; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);">
-                      <img src="${state.lastVerification.data.student.photo_url}" style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 4px solid #10b981; margin-bottom: 0.5rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" />
-                      <div style="font-weight: 800; font-size: 1.05rem; color: #064e3b;">${state.lastVerification.data.student.full_name}</div>
-                      <span class="badge badge-sky" style="font-size: 0.75rem; margin-top: 0.25rem;">${state.lastVerification.data.student.class_name}</span>
+                      <img src="${h(state.lastVerification.data.student.photo_url)}" style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 4px solid #10b981; margin-bottom: 0.5rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" />
+                      <div style="font-weight: 800; font-size: 1.05rem; color: #064e3b;">${h(state.lastVerification.data.student.full_name)}</div>
+                      <span class="badge badge-sky" style="font-size: 0.75rem; margin-top: 0.25rem;">${h(state.lastVerification.data.student.class_name)}</span>
                     </div>
 
                     <!-- Pickup Person Profile Box -->
                     <div style="text-align: center; background: white; padding: 1rem; border-radius: 14px; border: 1px solid #99f6e4; box-shadow: 0 4px 12px rgba(15, 118, 110, 0.1);">
-                      <img src="${state.lastVerification.data.pickup_person.photo_url}" style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 4px solid #0f766e; margin-bottom: 0.5rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" />
-                      <div style="font-weight: 800; font-size: 1.05rem; color: #0f766e;">${state.lastVerification.data.pickup_person.full_name}</div>
-                      <span class="badge badge-amber" style="font-size: 0.75rem; margin-top: 0.25rem;">${state.lastVerification.data.pickup_person.relationship}</span>
+                      <img src="${h(state.lastVerification.data.pickup_person.photo_url)}" style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 4px solid #0f766e; margin-bottom: 0.5rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" />
+                      <div style="font-weight: 800; font-size: 1.05rem; color: #0f766e;">${h(state.lastVerification.data.pickup_person.full_name)}</div>
+                      <span class="badge badge-amber" style="font-size: 0.75rem; margin-top: 0.25rem;">${h(state.lastVerification.data.pickup_person.relationship)}</span>
                     </div>
                   </div>
 
@@ -133,14 +138,14 @@ export function renderGateReaderPage(state) {
                           ? 'WhatsApp gagal dikirim'
                           : 'WhatsApp belum dikirim'}
                     </strong>
-                    <span>${whatsappStatus?.message || 'Mode simulasi atau gateway WhatsApp belum dikonfigurasi.'}</span>
+                    <span>${h(whatsappStatus?.message || 'Gateway WhatsApp belum dikonfigurasi.')}</span>
                     ${pushStatus?.status === 'NOT_CONFIGURED' ? '<span>Push notification belum dikonfigurasi.</span>' : ''}
                   </div>
 
                   ${state.lastVerification?.data?.verification_photo ? `
                     <div style="margin-top: 1rem; padding: 0.9rem; border-radius: 14px; background: #f8fafc; border: 1px solid #99f6e4; text-align: center;">
                       <div style="font-size: 0.8rem; font-weight: 800; color: #0f766e; margin-bottom: 0.45rem; text-transform: uppercase; letter-spacing: 0.04em;">📸 Foto Verifikasi Wajah</div>
-                      <img src="${state.lastVerification.data.verification_photo}" style="width: 100%; max-width: 220px; border-radius: 14px; object-fit: cover; border: 2px solid #14b8a6;" />
+                      <img src="${h(state.lastVerification.data.verification_photo)}" style="width: 100%; max-width: 220px; border-radius: 14px; object-fit: cover; border: 2px solid #14b8a6;" />
                       <div style="font-size: 0.76rem; color: #64748b; margin-top: 0.45rem;">Foto baru tersimpan sebagai bukti verifikasi penjemputan</div>
                     </div>
                   ` : ''}
@@ -148,7 +153,7 @@ export function renderGateReaderPage(state) {
                     <div class="camera-error-panel" role="alert">
                       <div>
                         <strong>Foto verifikasi belum tersimpan</strong>
-                        <p>${state.cameraError}</p>
+                        <p>${h(state.cameraError)}</p>
                       </div>
                       <button class="btn btn-secondary" onclick="window.retryVerificationPhoto()">Coba Kamera Lagi</button>
                     </div>
@@ -158,7 +163,7 @@ export function renderGateReaderPage(state) {
                 <div style="background: linear-gradient(135deg, #fef2f2, #fff1f1); border: 2px solid #fca5a5; border-radius: 16px; padding: 1.5rem; margin-bottom: 1rem;">
                   <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
                     <span style="font-size: 1.5rem;">🚨</span>
-                    <h4 style="color: #991b1b; margin: 0; font-size: 1.15rem;">${state.lastVerification.message}</h4>
+                    <h4 style="color: #991b1b; margin: 0; font-size: 1.15rem;">${h(state.lastVerification.message)}</h4>
                   </div>
                   <p style="font-size: 0.9rem; color: #7f1d1d; line-height: 1.5;">
                     Peringatan keamanan telah dicatat otomatis ke sistem audit sekolah. Petugas piket wajib menahan siswa dan mengonfirmasi ulang identitas penjemput sebelum mengizinkan keluar area gerbang!

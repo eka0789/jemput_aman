@@ -36,13 +36,15 @@ try {
     .single();
 
   if (error) throw error;
-  const publicPrefix = `/storage/v1/object/public/${env.SUPABASE_STORAGE_BUCKET}/`;
-  const photoUrl = new URL(storedLog.verification_photo);
-  const prefixIndex = photoUrl.pathname.indexOf(publicPrefix);
-  if (prefixIndex === -1 || attached.verification_photo !== storedLog.verification_photo) {
-    throw new Error('Kolom verification_photo tidak berisi URL Supabase Storage');
+  storagePath = storedLog.verification_photo;
+  const signedUrl = new URL(attached.verification_photo);
+  const signedPrefix = `/storage/v1/object/sign/${env.SUPABASE_STORAGE_BUCKET}/`;
+  if (
+    !storagePath.startsWith(`${schoolId}/verification/${logId}/`)
+    || !signedUrl.pathname.includes(signedPrefix)
+  ) {
+    throw new Error('Foto tidak disimpan sebagai path privat dengan signed URL');
   }
-  storagePath = decodeURIComponent(photoUrl.pathname.slice(prefixIndex + publicPrefix.length));
 
   const { data: storedObject, error: storageError } = await supabase.storage
     .from(env.SUPABASE_STORAGE_BUCKET)

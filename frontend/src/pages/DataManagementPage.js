@@ -1,3 +1,5 @@
+import { escapeHtml as h } from '../utils/html.js';
+
 export function renderDataManagementPage(state) {
   const cards = state.cards || [];
   const students = state.students || [
@@ -73,30 +75,22 @@ export function renderDataManagementPage(state) {
             <div style="display: flex; flex-direction: column; gap: 0.85rem;">
               <div>
                 <label style="font-size: 0.85rem; font-weight: bold; color: #0f766e; display: block; margin-bottom: 0.25rem;">UID Kartu NFC (Hasil Scan Tap):</label>
-                <input type="text" id="reg_nfc_uid" value="${state.newCardUid || ''}" placeholder="Scan kartu NFC untuk isi otomatis..." style="width: 100%; padding: 0.65rem 0.85rem; border-radius: 10px; border: 2px solid #2dd4bf; font-family: monospace; font-weight: bold; color: #0f766e; background: #e6f4f1;" readonly />
+                  <input type="text" id="reg_nfc_uid" value="${h(state.newCardUid || '')}" placeholder="Scan kartu NFC untuk isi otomatis..." style="width: 100%; padding: 0.65rem 0.85rem; border-radius: 10px; border: 2px solid #2dd4bf; font-family: monospace; font-weight: bold; color: #0f766e; background: #e6f4f1;" readonly />
               </div>
 
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                <div>
-                  <label style="font-size: 0.82rem; font-weight: bold; color: #334155; display: block; margin-bottom: 0.25rem;">Nama Penjemput Sah:</label>
-                  <input type="text" id="reg_pickup_name" placeholder="Contoh: Pak Joko / Ayah Budi" style="width: 100%; padding: 0.6rem; border-radius: 8px; border: 1.5px solid #cbd5e1;" />
-                </div>
-                <div>
-                  <label style="font-size: 0.82rem; font-weight: bold; color: #334155; display: block; margin-bottom: 0.25rem;">Peran / Hubungan:</label>
-                  <select id="reg_pickup_relation" style="width: 100%; padding: 0.6rem; border-radius: 8px; border: 1.5px solid #cbd5e1;">
-                    <option value="Ayah Kandung">Ayah Kandung</option>
-                    <option value="Ibu Kandung">Ibu Kandung</option>
-                    <option value="Supir Keluarga">Supir Keluarga</option>
-                    <option value="Kakek / Nenek">Kakek / Nenek</option>
-                    <option value="Kerabat Terdaftar">Kerabat Terdaftar</option>
-                  </select>
-                </div>
+              <div>
+                <label style="font-size: 0.82rem; font-weight: bold; color: #334155; display: block; margin-bottom: 0.25rem;">Penjemput Sah Terdaftar:</label>
+                <select id="reg_pickup_person_id" style="width: 100%; padding: 0.6rem; border-radius: 8px; border: 1.5px solid #cbd5e1;">
+                  ${pickupPersons.map(person => `
+                    <option value="${h(person.id)}">${h(person.name)} (${h(person.relationship)})</option>
+                  `).join('')}
+                </select>
               </div>
 
               <div>
                 <label style="font-size: 0.82rem; font-weight: bold; color: #334155; display: block; margin-bottom: 0.25rem;">Terikat pada Murid (Siswa):</label>
                 <select id="reg_student_id" style="width: 100%; padding: 0.6rem; border-radius: 8px; border: 1.5px solid #cbd5e1;">
-                  ${students.map(s => `<option value="${s.id}">${s.name} (${s.class_name})</option>`).join('')}
+                  ${students.map(s => `<option value="${h(s.id)}">${h(s.name)} (${h(s.class_name)})</option>`).join('')}
                 </select>
               </div>
 
@@ -116,10 +110,10 @@ export function renderDataManagementPage(state) {
           <div class="profile-photo-grid">
             ${pickupPersons.map(person => `
               <div class="profile-photo-item">
-                <img src="${person.photo_url}" alt="Foto ${person.name}" />
+                <img src="${h(person.photo_url)}" alt="Foto ${h(person.name)}" />
                 <div class="profile-photo-copy">
-                  <strong>${person.name}</strong>
-                  <span>${person.relationship}</span>
+                  <strong>${h(person.name)}</strong>
+                  <span>${h(person.relationship)}</span>
                 </div>
                 <button class="btn btn-secondary profile-photo-button" onclick="window.selectProfilePhoto('pickup_person', '${person.id}')">Unggah Foto</button>
               </div>
@@ -135,11 +129,11 @@ export function renderDataManagementPage(state) {
               <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1.5px solid ${c.status === 'ACTIVE' ? '#e2e8f0' : '#fca5a5'}; border-radius: 12px; background: ${c.status === 'ACTIVE' ? '#ffffff' : '#fef2f2'};">
                 <div>
                   <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-                    <code style="background: #e6f4f1; border: 1px solid #2dd4bf; padding: 2px 8px; border-radius: 6px; font-weight: bold; color: #0f766e;">${c.uid}</code>
-                    <span class="badge ${c.status === 'ACTIVE' ? 'badge-verified' : 'badge-blocked'}">${c.status}</span>
+                    <code style="background: #e6f4f1; border: 1px solid #2dd4bf; padding: 2px 8px; border-radius: 6px; font-weight: bold; color: #0f766e;">${h(c.uid)}</code>
+                    <span class="badge ${c.status === 'ACTIVE' ? 'badge-verified' : 'badge-blocked'}">${h(c.status)}</span>
                   </div>
-                  <div style="font-size: 0.9rem; font-weight: bold;">Penjemput: ${c.holder}</div>
-                  <div style="font-size: 0.8rem; color: #64748b;">Siswa: <strong>${c.student}</strong></div>
+                  <div style="font-size: 0.9rem; font-weight: bold;">Penjemput: ${h(c.holder)}</div>
+                  <div style="font-size: 0.8rem; color: #64748b;">Siswa: <strong>${h(c.student)}</strong></div>
                 </div>
                 <button class="btn btn-danger" onclick="window.toggleCardStatus('${c.uid}', '${c.status === 'ACTIVE' ? 'LOST' : 'ACTIVE'}')" style="font-size: 0.8rem;">
                   ${c.status === 'ACTIVE' ? '🚫 Laporkan Hilang' : '✅ Aktifkan Lagi'}
@@ -197,16 +191,16 @@ export function renderDataManagementPage(state) {
                   <tr style="border-bottom: 1px solid #f1f5f9;">
                     <td style="padding: 0.75rem 1rem;">
                       <div class="student-photo-control">
-                        <img src="${s.photo_url}" alt="Foto ${s.name}" />
+                        <img src="${h(s.photo_url)}" alt="Foto ${h(s.name)}" />
                         <button class="btn btn-secondary profile-photo-button" onclick="window.selectProfilePhoto('student', '${s.id}')">Unggah Foto</button>
                       </div>
                     </td>
-                    <td style="padding: 0.75rem 1rem; font-weight: bold; color: #0f172a;">${s.name}</td>
-                    <td style="padding: 0.75rem 1rem;"><span class="badge badge-sky">${s.class_name}</span></td>
-                    <td style="padding: 0.75rem 1rem;">${s.parent_name}</td>
+                    <td style="padding: 0.75rem 1rem; font-weight: bold; color: #0f172a;">${h(s.name)}</td>
+                    <td style="padding: 0.75rem 1rem;"><span class="badge badge-sky">${h(s.class_name)}</span></td>
+                    <td style="padding: 0.75rem 1rem;">${h(s.parent_name)}</td>
                     <td style="padding: 0.75rem 1rem;">
                       <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                        <span style="font-family: monospace; font-weight: bold; color: #0f766e;">${s.phone}</span>
+                        <span style="font-family: monospace; font-weight: bold; color: #0f766e;">${h(s.phone)}</span>
                         <button class="btn btn-secondary profile-photo-button" onclick="window.editParentWhatsapp('${s.id}')">Edit Nomor</button>
                       </div>
                     </td>

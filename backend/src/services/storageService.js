@@ -57,11 +57,24 @@ export const storageService = {
       throw wrappedError;
     }
 
-    const { data } = bucket.getPublicUrl(path);
     return {
-      path,
-      publicUrl: data.publicUrl
+      path
     };
+  },
+
+  getSignedUrl: async (path, expiresIn = 3600) => {
+    if (!path) return null;
+    if (/^https?:\/\//i.test(path)) return path;
+    const { data, error } = await assertSupabaseConfigured()
+      .storage
+      .from(env.SUPABASE_STORAGE_BUCKET)
+      .createSignedUrl(path, expiresIn);
+    if (error) {
+      const wrappedError = new Error(`Supabase membuat URL foto privat gagal: ${error.message}`);
+      wrappedError.statusCode = 503;
+      throw wrappedError;
+    }
+    return data.signedUrl;
   },
 
   remove: async (path) => {

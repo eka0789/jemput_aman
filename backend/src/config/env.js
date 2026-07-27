@@ -11,7 +11,18 @@ dotenv.config({ path: path.join(__dirname, '../../../.env') });
 export const env = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: parseInt(process.env.PORT || '3000', 10),
-  JWT_SECRET: process.env.JWT_SECRET || 'jemput_aman_secret_key_2026',
+  JWT_SECRET:
+    process.env.JWT_SECRET
+    || ((process.env.NODE_ENV || 'development') !== 'production'
+      ? 'jemput_aman_development_only_secret'
+      : ''),
+  AUTH_ALLOW_DEV_MOCK:
+    (process.env.AUTH_ALLOW_DEV_MOCK || 'true').toLowerCase() === 'true',
+  APP_TIME_ZONE: process.env.APP_TIME_ZONE || 'Asia/Jakarta',
+  CORS_ORIGINS: (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean),
   DEFAULT_SCHOOL_ID: process.env.DEFAULT_SCHOOL_ID || '1001-tk-ceria-salatiga',
   SUPABASE_URL: process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '',
   SUPABASE_SECRET_KEY:

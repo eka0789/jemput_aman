@@ -30,12 +30,16 @@ export const emergencyOtpModel = {
       'membuat OTP darurat'
     );
   },
-  findById: async (id) => (
+  findById: async (id, schoolId) => {
+    let query = client().from('emergency_otps').select('*').eq('id', id);
+    if (schoolId) query = query.eq('school_id', schoolId);
+    return (
     unwrapSupabase(
-      await client().from('emergency_otps').select('*').eq('id', id).maybeSingle(),
+      await query.maybeSingle(),
       'membaca OTP darurat'
     )
-  ),
+    );
+  },
   findPendingBySchool: async (schoolId) => (
     unwrapSupabase(
       await client()
@@ -43,20 +47,23 @@ export const emergencyOtpModel = {
         .select('*')
         .eq('school_id', schoolId)
         .eq('status', 'PENDING')
+        .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false }),
       'membaca OTP tertunda'
     )
   ),
-  approve: async (id) => (
-    unwrapSupabase(
-      await client()
+  approve: async ({ id, schoolId, otpCodeHash }) => {
+    let query = client()
         .from('emergency_otps')
         .update({ status: 'APPROVED' })
         .eq('id', id)
+        .eq('school_id', schoolId)
         .eq('status', 'PENDING')
-        .select()
-        .maybeSingle(),
+        .gt('expires_at', new Date().toISOString());
+    if (otpCodeHash) query = query.eq('otp_code', otpCodeHash);
+    return unwrapSupabase(
+      await query.select().maybeSingle(),
       'menyetujui OTP'
-    )
-  )
+    );
+  }
 };
