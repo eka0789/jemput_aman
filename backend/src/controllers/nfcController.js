@@ -122,7 +122,8 @@ export const attachVerificationPhoto = async (req, res, next) => {
     const data = await nfcService.attachVerificationPhoto({
       pickupLogId: pickup_log_id,
       schoolId: req.schoolId,
-      facePhoto: face_photo
+      facePhoto: face_photo,
+      simulationOnly: req.user?.role === 'FOUNDATION'
     });
 
     if (!data) {

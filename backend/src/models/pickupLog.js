@@ -35,6 +35,17 @@ export const pickupLogModel = {
       'membaca log penjemputan'
     )
   ),
+  findById: async (logId, schoolId) => (
+    unwrapSupabase(
+      await client()
+        .from('pickup_logs')
+        .select('*')
+        .eq('id', logId)
+        .eq('school_id', schoolId)
+        .maybeSingle(),
+      'membaca log penjemputan'
+    )
+  ),
   finalizeVerificationPhoto: async (logId, schoolId, verificationPhoto) => (
     unwrapSupabase(
       await client()

@@ -6,6 +6,8 @@ export function renderGateReaderPage(state) {
   const isBlocked = state.lastVerification?.status === 'BLOCKED';
   const whatsappStatus = state.lastVerification?.data?.notification_status?.whatsapp;
   const pushStatus = state.lastVerification?.data?.notification_status?.push;
+  const cameraActionLabel = state.pendingVerificationPhoto ? 'Upload Lagi' : 'Coba Kamera Lagi';
+  const cameraPreview = state.cameraPreview || state.lastVerification?.data?.verification_photo;
 
   return `
     <div class="container">
@@ -177,15 +179,30 @@ export function renderGateReaderPage(state) {
                   <p style="font-size: 0.9rem; color: #78350f; line-height: 1.5;">
                     Kartu NFC cocok, tetapi siswa belum boleh meninggalkan gerbang sampai foto wajah berhasil diambil dan disimpan.
                   </p>
+                  ${cameraPreview ? `
+                    <div class="camera-result-preview">
+                      <div class="camera-result-preview__label">
+                        ${state.cameraUploading ? 'Mengunggah foto ke penyimpanan...' : 'Foto berhasil diambil'}
+                      </div>
+                      <img src="${h(cameraPreview)}" alt="Preview foto verifikasi yang baru diambil" />
+                    </div>
+                  ` : ''}
                   ${state.cameraError ? `
                     <div class="camera-error-panel" role="alert">
                       <div>
                         <strong>Foto verifikasi belum tersimpan</strong>
                         <p>${h(state.cameraError)}</p>
                       </div>
-                      <button class="btn btn-secondary" onclick="window.retryVerificationPhoto()">Coba Kamera Lagi</button>
+                      <div class="camera-error-panel__actions">
+                        <button class="btn btn-primary" onclick="window.retryVerificationPhoto()">${cameraActionLabel}</button>
+                        ${state.pendingVerificationPhoto
+                          ? '<button class="btn btn-secondary" onclick="window.retakeVerificationPhoto()">Ambil Ulang</button>'
+                          : ''}
+                      </div>
                     </div>
-                  ` : '<p style="font-weight: 800; color: #b45309;">Kamera sedang diproses...</p>'}
+                  ` : `<p style="font-weight: 800; color: #b45309;">
+                    ${state.cameraUploading ? 'Foto terlihat di atas dan sedang diunggah...' : 'Kamera sedang diproses...'}
+                  </p>`}
                 </div>
               ` : `
                 <div style="background: linear-gradient(135deg, #fef2f2, #fff1f1); border: 2px solid #fca5a5; border-radius: 16px; padding: 1.5rem; margin-bottom: 1rem;">

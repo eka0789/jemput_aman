@@ -61,6 +61,9 @@ const state = {
   authUser: getTokenPayload(),
   lastVerification: null,
   cameraError: '',
+  cameraPreview: '',
+  pendingVerificationPhoto: '',
+  cameraUploading: false,
   showBindModal: false,
   newCardUid: '',
   pickupLogs: [
@@ -677,23 +680,52 @@ const storeVerificationPhoto = async (verification, facePhoto) => {
   }
 };
 
-const captureVerificationPhoto = async () => {
+const uploadPendingVerificationPhoto = async () => {
+  if (!state.pendingVerificationPhoto || state.cameraUploading) return;
+
+  state.cameraError = '';
+  state.cameraUploading = true;
+  render();
+  try {
+    await storeVerificationPhoto(state.lastVerification, state.pendingVerificationPhoto);
+    state.pendingVerificationPhoto = '';
+    state.cameraPreview = '';
+  } catch (err) {
+    state.cameraError = err.message || 'Foto berhasil diambil, tetapi gagal diunggah ke penyimpanan.';
+  } finally {
+    state.cameraUploading = false;
+    render();
+  }
+};
+
+const captureVerificationPhoto = async ({ retake = false } = {}) => {
   if (
     !['PENDING_PHOTO', 'VERIFIED'].includes(state.lastVerification?.status)
     || state.lastVerification?.data?.verification_photo
   ) return;
 
+  if (state.pendingVerificationPhoto && !retake) {
+    await uploadPendingVerificationPhoto();
+    return;
+  }
+
   state.cameraError = '';
+  state.cameraPreview = '';
+  state.pendingVerificationPhoto = '';
   try {
     const facePhoto = await captureFacePhoto();
-    await storeVerificationPhoto(state.lastVerification, facePhoto);
+    state.cameraPreview = facePhoto;
+    state.pendingVerificationPhoto = facePhoto;
+    render();
+    await uploadPendingVerificationPhoto();
   } catch (err) {
     state.cameraError = err.message || 'Kamera gagal mengambil foto verifikasi.';
+    render();
   }
-  render();
 };
 
 window.retryVerificationPhoto = captureVerificationPhoto;
+window.retakeVerificationPhoto = () => captureVerificationPhoto({ retake: true });
 
 window.simulateNfcTap = async (cardUid, simulationMode = true) => {
   const localCard = state.cards.find(c => c.uid === cardUid);
@@ -730,6 +762,9 @@ window.simulateNfcTap = async (cardUid, simulationMode = true) => {
     const result = await response.json();
     state.lastVerification = result;
     state.cameraError = '';
+    state.cameraPreview = '';
+    state.pendingVerificationPhoto = '';
+    state.cameraUploading = false;
     if (result.data) {
       state.pickupLogs.unshift({
         id: result.data.pickup_log_id,

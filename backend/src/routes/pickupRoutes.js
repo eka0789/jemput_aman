@@ -6,6 +6,6 @@ const router = express.Router();
 
 // POST /api/v1/pickup/verify-nfc
 router.post('/verify-nfc', requireRole('TEACHER', 'ADMIN', 'FOUNDATION'), verifyNfcTap);
-router.post('/verification-photo', requireRole('TEACHER', 'ADMIN'), attachVerificationPhoto);
+router.post('/verification-photo', requireRole('TEACHER', 'ADMIN', 'FOUNDATION'), attachVerificationPhoto);
 
 export default router;

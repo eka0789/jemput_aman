@@ -391,14 +391,50 @@ h1, h2, h3, h4 {
   white-space: nowrap;
 }
 
+.camera-error-panel__actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.5rem;
+}
+
+.camera-result-preview {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border: 2px solid #f59e0b;
+  border-radius: 10px;
+  background: #ffffff;
+  text-align: center;
+}
+
+.camera-result-preview__label {
+  margin-bottom: 0.55rem;
+  color: #92400e;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.camera-result-preview img {
+  display: block;
+  width: min(100%, 280px);
+  max-height: 280px;
+  margin: 0 auto;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
 @media (max-width: 540px) {
   .camera-error-panel {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .camera-error-panel .btn {
+  .camera-error-panel .btn,
+  .camera-error-panel__actions {
     width: 100%;
+  }
+
+  .camera-error-panel__actions {
+    flex-direction: column;
   }
 }
 

@@ -150,4 +150,55 @@ describe('NFC Verification Contract & Logic Tests', () => {
     expect(result.status).toBe('VERIFIED');
     expect(result.verification_photo).toContain('/storage/v1/object/sign/images/');
   });
+
+  it('should allow foundation photo upload only for NFC simulation logs', async () => {
+    vi.spyOn(pickupLogModel, 'findById').mockResolvedValue({
+      id: 'log-simulation',
+      verification_method: 'NFC_SIMULATION'
+    });
+    vi.spyOn(storageService, 'uploadVerificationPhoto').mockResolvedValue({
+      path: `${schoolId}/verification/log-simulation/photo.jpg`
+    });
+    vi.spyOn(pickupLogModel, 'finalizeVerificationPhoto').mockResolvedValue({
+      id: 'log-simulation',
+      student_id: student.id,
+      student_name: student.full_name,
+      pickup_person_id: pickupPerson.id,
+      pickup_person_name: pickupPerson.full_name,
+      timestamp: '2026-07-29T08:00:00.000Z',
+      status: 'VERIFIED',
+      verification_method: 'NFC_SIMULATION',
+      verification_photo: `${schoolId}/verification/log-simulation/photo.jpg`
+    });
+    vi.spyOn(storageService, 'getSignedUrl').mockResolvedValue('https://signed.example/photo.jpg');
+
+    const result = await nfcService.attachVerificationPhoto({
+      pickupLogId: 'log-simulation',
+      schoolId,
+      facePhoto: 'data:image/jpeg;base64,ZmFjZS1zYW1wbGUtZGF0YQ==',
+      simulationOnly: true
+    });
+
+    expect(result.status).toBe('VERIFIED');
+    expect(result.verification_method).toBe('NFC_SIMULATION');
+  });
+
+  it('should reject foundation photo upload for a physical NFC log', async () => {
+    vi.spyOn(pickupLogModel, 'findById').mockResolvedValue({
+      id: 'log-physical',
+      verification_method: 'NFC_TAP'
+    });
+    const finalizePhoto = vi.spyOn(pickupLogModel, 'finalizeVerificationPhoto');
+
+    await expect(nfcService.attachVerificationPhoto({
+      pickupLogId: 'log-physical',
+      schoolId,
+      facePhoto: 'data:image/jpeg;base64,ZmFjZS1zYW1wbGUtZGF0YQ==',
+      simulationOnly: true
+    })).rejects.toMatchObject({
+      statusCode: 403,
+      code: 'FOUNDATION_SIMULATION_ONLY'
+    });
+    expect(finalizePhoto).not.toHaveBeenCalled();
+  });
 });

@@ -249,7 +249,23 @@ export const nfcService = {
       }
     };
   },
-  attachVerificationPhoto: async ({ pickupLogId, schoolId, facePhoto }) => {
+  attachVerificationPhoto: async ({
+    pickupLogId,
+    schoolId,
+    facePhoto,
+    simulationOnly = false
+  }) => {
+    if (simulationOnly) {
+      const pendingLog = await pickupLogModel.findById(pickupLogId, schoolId);
+      if (!pendingLog) return null;
+      if (pendingLog.verification_method !== 'NFC_SIMULATION') {
+        const error = new Error('Akun Yayasan hanya dapat menyimpan foto untuk mode simulasi NFC');
+        error.statusCode = 403;
+        error.code = 'FOUNDATION_SIMULATION_ONLY';
+        throw error;
+      }
+    }
+
     const log = await storeVerificationPhoto({ pickupLogId, schoolId, facePhoto });
 
     if (!log) {
