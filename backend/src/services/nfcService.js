@@ -58,7 +58,8 @@ export const nfcService = {
     schoolId,
     teacherId = 'usr-teacher-1',
     facePhoto = null,
-    verificationDate = new Date()
+    verificationDate = new Date(),
+    simulationMode = false
   }) => {
     // 1. Find NFC card in store
     const card = await models.nfcCards.findByUid(cardUid, schoolId);
@@ -165,7 +166,7 @@ export const nfcService = {
     const schedules = await scheduleModel.findByStudent(targetStudent.id);
     const currentDay = dayCodeFor(verificationDate);
     const scheduledToday = schedules.find(item => item.day_of_week === currentDay);
-    if (schedules.length > 0 && scheduledToday?.pickup_person_id !== pickupPerson.id) {
+    if (!simulationMode && schedules.length > 0 && scheduledToday?.pickup_person_id !== pickupPerson.id) {
       await pickupLogModel.create({
         school_id: schoolId,
         student_id: targetStudent.id,
@@ -196,9 +197,11 @@ export const nfcService = {
       pickup_person_name: `${pickupPerson.full_name} (${pickupPerson.relationship})`,
       nfc_card_id: card.id,
       duty_teacher_id: teacherId,
-      verification_method: 'NFC_TAP',
+      verification_method: simulationMode ? 'NFC_SIMULATION' : 'NFC_TAP',
       status: 'PENDING_PHOTO',
-      notes: 'Verifikasi pengetapan NFC berhasil di gerbang sekolah',
+      notes: simulationMode
+        ? 'Simulasi verifikasi NFC berhasil; jadwal harian dan notifikasi dilewati'
+        : 'Verifikasi pengetapan NFC berhasil di gerbang sekolah',
       verification_photo: null
     });
 
@@ -239,6 +242,7 @@ export const nfcService = {
         } : null,
         timestamp: log.timestamp,
         notification_sent: false,
+        simulation_mode: simulationMode,
         verification_photo: log.verification_photo
           ? await storageService.getSignedUrl(log.verification_photo)
           : null
@@ -260,6 +264,7 @@ export const nfcService = {
       pickup_person_name: log.pickup_person_name,
       timestamp: log.timestamp,
       status: log.status,
+      verification_method: log.verification_method,
       verification_photo: await storageService.getSignedUrl(log.verification_photo)
     };
   }

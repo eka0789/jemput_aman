@@ -70,6 +70,27 @@ describe('NFC Verification Contract & Logic Tests', () => {
     expect(result.data.parent.phone_number).toBe('081234567890');
   });
 
+  it('should allow an authorized simulator card outside the daily schedule without sending a real tap', async () => {
+    mockSuccessfulLookup();
+    vi.mocked(scheduleModel.findByStudent).mockResolvedValue([
+      { student_id: student.id, pickup_person_id: 'different-person', day_of_week: 'WED' }
+    ]);
+
+    const result = await nfcService.verifyTap({
+      cardUid: activeCard.card_uid,
+      schoolId,
+      studentId: student.id,
+      simulationMode: true,
+      verificationDate: new Date('2026-07-29T08:00:00+07:00')
+    });
+
+    expect(result.status).toBe('PENDING_PHOTO');
+    expect(result.data.simulation_mode).toBe(true);
+    expect(pickupLogModel.create).toHaveBeenCalledWith(expect.objectContaining({
+      verification_method: 'NFC_SIMULATION'
+    }));
+  });
+
   it('should block unregistered NFC card tap', async () => {
     vi.spyOn(models.nfcCards, 'findByUid').mockResolvedValue(null);
     vi.spyOn(pickupLogModel, 'create').mockResolvedValue({ id: 'log-blocked' });

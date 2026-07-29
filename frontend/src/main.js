@@ -695,7 +695,7 @@ const captureVerificationPhoto = async () => {
 
 window.retryVerificationPhoto = captureVerificationPhoto;
 
-window.simulateNfcTap = async (cardUid) => {
+window.simulateNfcTap = async (cardUid, simulationMode = true) => {
   const localCard = state.cards.find(c => c.uid === cardUid);
   if (localCard && localCard.status !== 'ACTIVE') {
     state.lastVerification = {
@@ -721,7 +721,11 @@ window.simulateNfcTap = async (cardUid) => {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ card_uid: cardUid })
+      body: JSON.stringify({
+        card_uid: cardUid,
+        student_id: simulationMode ? '1111' : undefined,
+        simulation: simulationMode
+      })
     }, 'TEACHER');
     const result = await response.json();
     state.lastVerification = result;
@@ -731,7 +735,7 @@ window.simulateNfcTap = async (cardUid) => {
         id: result.data.pickup_log_id,
         student_name: result.data.student.full_name,
         pickup_person_name: `${result.data.pickup_person.full_name} (${result.data.pickup_person.relationship})`,
-        verification_method: 'NFC_TAP',
+        verification_method: result.data.simulation_mode ? 'NFC_SIMULATION' : 'NFC_TAP',
         status: result.status,
         timestamp: result.data.timestamp,
         notes: result.message,
@@ -764,7 +768,7 @@ window.simulateNfcTap = async (cardUid) => {
 
 window.startNfcReader = async () => {
   const started = await webNfc.startScan(
-    card => window.simulateNfcTap(card.serialNumber),
+    card => window.simulateNfcTap(card.serialNumber, false),
     message => alert(message)
   );
   if (started) alert('Reader NFC aktif. Tempelkan kartu pada perangkat.');
