@@ -8,7 +8,8 @@
     },
     "backend": {
       "entrypoint": "backend/src/app.js",
-      "framework": "express"
+      "framework": "express",
+      "routePrefix": "/api"
     }
   },
   "rewrites": [
