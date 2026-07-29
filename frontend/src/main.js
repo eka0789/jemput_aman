@@ -504,11 +504,21 @@ const storeVerificationPhoto = async (verification, facePhoto) => {
   }, 'TEACHER');
   const result = await readJsonResponse(response, 'Foto gagal disimpan ke data verifikasi.');
 
-  verification.data.verification_photo = result.data.verification_photo;
+  verification.status = result.status;
+  verification.message = result.message;
+  verification.data = { ...verification.data, ...result.data };
+  const localLog = state.pickupLogs.find(log => log.id === pickupLogId);
+  if (localLog) {
+    localLog.status = result.status;
+    localLog.notes = result.message;
+  }
 };
 
 const captureVerificationPhoto = async () => {
-  if (state.lastVerification?.status !== 'VERIFIED') return;
+  if (
+    !['PENDING_PHOTO', 'VERIFIED'].includes(state.lastVerification?.status)
+    || state.lastVerification?.data?.verification_photo
+  ) return;
 
   state.cameraError = '';
   try {
@@ -565,7 +575,7 @@ window.simulateNfcTap = async (cardUid) => {
       });
     }
     render();
-    if (response.ok && result.status === 'VERIFIED') {
+    if (response.ok && ['PENDING_PHOTO', 'VERIFIED'].includes(result.status)) {
       await captureVerificationPhoto();
     }
     return;
@@ -583,7 +593,7 @@ window.simulateNfcTap = async (cardUid) => {
   }
   state.cameraError = '';
   render();
-  if (state.lastVerification?.status === 'VERIFIED') {
+  if (state.lastVerification?.status === 'PENDING_PHOTO') {
     await captureVerificationPhoto();
   }
 };

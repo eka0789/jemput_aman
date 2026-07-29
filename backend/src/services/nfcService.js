@@ -29,7 +29,7 @@ const storeVerificationPhoto = async ({ pickupLogId, schoolId, facePhoto }) => {
   });
 
   try {
-    const log = await pickupLogModel.attachVerificationPhoto(
+    const log = await pickupLogModel.finalizeVerificationPhoto(
       pickupLogId,
       schoolId,
       uploaded.path
@@ -197,7 +197,7 @@ export const nfcService = {
       nfc_card_id: card.id,
       duty_teacher_id: teacherId,
       verification_method: 'NFC_TAP',
-      status: 'VERIFIED',
+      status: 'PENDING_PHOTO',
       notes: 'Verifikasi pengetapan NFC berhasil di gerbang sekolah',
       verification_photo: null
     });
@@ -210,9 +210,13 @@ export const nfcService = {
       });
     }
 
+    const verificationCompleted = log.status === 'VERIFIED' && Boolean(log.verification_photo);
+
     return {
-      status: 'VERIFIED',
-      message: 'Penjemputan Terverifikasi Sah',
+      status: verificationCompleted ? 'VERIFIED' : 'PENDING_PHOTO',
+      message: verificationCompleted
+        ? 'Penjemputan Terverifikasi Sah'
+        : 'Kartu NFC sah. Foto wajah wajib diambil sebelum penjemputan disahkan.',
       data: {
         pickup_log_id: log.id,
         student: {
@@ -250,6 +254,12 @@ export const nfcService = {
 
     return {
       pickup_log_id: log.id,
+      student_id: log.student_id,
+      student_name: log.student_name,
+      pickup_person_id: log.pickup_person_id,
+      pickup_person_name: log.pickup_person_name,
+      timestamp: log.timestamp,
+      status: log.status,
       verification_photo: await storageService.getSignedUrl(log.verification_photo)
     };
   }

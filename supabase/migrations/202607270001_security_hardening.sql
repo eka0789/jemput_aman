@@ -13,7 +13,7 @@ begin
   ) then
     alter table public.pickup_logs
       add constraint pickup_logs_status_check
-      check (status in ('VERIFIED', 'OUT_OF_SCHEDULE', 'BLOCKED'));
+      check (status in ('PENDING_PHOTO', 'VERIFIED', 'OUT_OF_SCHEDULE', 'BLOCKED'));
   end if;
 
   if not exists (

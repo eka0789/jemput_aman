@@ -35,17 +35,17 @@ export const pickupLogModel = {
       'membaca log penjemputan'
     )
   ),
-  attachVerificationPhoto: async (logId, schoolId, verificationPhoto) => (
+  finalizeVerificationPhoto: async (logId, schoolId, verificationPhoto) => (
     unwrapSupabase(
       await client()
         .from('pickup_logs')
-        .update({ verification_photo: verificationPhoto })
+        .update({ verification_photo: verificationPhoto, status: 'VERIFIED' })
         .eq('id', logId)
         .eq('school_id', schoolId)
-        .eq('status', 'VERIFIED')
+        .in('status', ['PENDING_PHOTO', 'VERIFIED'])
         .select()
         .maybeSingle(),
-      'menyimpan foto verifikasi'
+      'menyimpan foto dan menyelesaikan verifikasi'
     )
   ),
   findAll: async () => (

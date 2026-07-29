@@ -12,6 +12,26 @@ const EXTENSIONS = {
 
 const safePathSegment = value => String(value).replace(/[^a-z0-9_-]/gi, '-');
 
+export const normalizeStoragePath = (value) => {
+  if (!value) return null;
+  const rawValue = String(value);
+  if (!/^https?:\/\//i.test(rawValue)) {
+    return rawValue.replace(/^\/+/, '');
+  }
+
+  try {
+    const url = new URL(rawValue);
+    const markers = ['public', 'sign', 'authenticated'].map(
+      access => `/storage/v1/object/${access}/${env.SUPABASE_STORAGE_BUCKET}/`
+    );
+    const marker = markers.find(candidate => url.pathname.includes(candidate));
+    if (!marker) return rawValue;
+    return decodeURIComponent(url.pathname.slice(url.pathname.indexOf(marker) + marker.length));
+  } catch {
+    return rawValue;
+  }
+};
+
 const decodePhoto = (dataUrl) => {
   const match = DATA_URL_PATTERN.exec(dataUrl);
   if (!match) {
@@ -64,11 +84,12 @@ export const storageService = {
 
   getSignedUrl: async (path, expiresIn = 3600) => {
     if (!path) return null;
-    if (/^https?:\/\//i.test(path)) return path;
+    const storagePath = normalizeStoragePath(path);
+    if (/^(https?:|data:)/i.test(storagePath)) return storagePath;
     const { data, error } = await assertSupabaseConfigured()
       .storage
       .from(env.SUPABASE_STORAGE_BUCKET)
-      .createSignedUrl(path, expiresIn);
+      .createSignedUrl(storagePath, expiresIn);
     if (error) {
       const wrappedError = new Error(`Supabase membuat URL foto privat gagal: ${error.message}`);
       wrappedError.statusCode = 503;

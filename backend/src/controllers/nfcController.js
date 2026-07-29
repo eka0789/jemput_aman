@@ -1,6 +1,32 @@
 import { nfcService } from '../services/nfcService.js';
 import { whatsappService } from '../services/whatsappService.js';
 import { pushNotificationService } from '../services/pushNotificationService.js';
+import { models } from '../models/schema.js';
+
+const dispatchPickupNotifications = async ({
+  schoolId,
+  studentName,
+  pickupPersonName,
+  parentPhone,
+  timestamp
+}) => {
+  const notifPayload = {
+    studentName,
+    pickupPersonName,
+    timestamp: new Date(timestamp).toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  };
+  const [whatsapp, push] = await Promise.all([
+    whatsappService.sendPickupNotification(parentPhone, notifPayload),
+    pushNotificationService.sendPushAlert(schoolId, notifPayload)
+  ]);
+  return {
+    notification_sent: whatsapp.success || push.success,
+    notification_status: { whatsapp, push }
+  };
+};
 
 export const verifyNfcTap = async (req, res, next) => {
   try {
@@ -26,24 +52,17 @@ export const verifyNfcTap = async (req, res, next) => {
     if (result.status === 'VERIFIED') {
       // Trigger automatic real-time notifications to Parent (US2 integration)
       const { student, pickup_person, parent, timestamp } = result.data;
-      const notifPayload = {
+      Object.assign(result.data, await dispatchPickupNotifications({
+        schoolId,
         studentName: student.full_name,
         pickupPersonName: `${pickup_person.full_name} (${pickup_person.relationship})`,
-        timestamp: new Date(timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
-      };
-
-      const [whatsapp, push] = await Promise.all([
-        whatsappService.sendPickupNotification(parent?.phone_number, notifPayload),
-        pushNotificationService.sendPushAlert(schoolId, notifPayload)
-      ]);
-
-      result.data.notification_sent = whatsapp.success || push.success;
-      result.data.notification_status = {
-        whatsapp,
-        push
-      };
+        parentPhone: parent?.phone_number,
+        timestamp
+      }));
 
       return res.status(200).json(result);
+    } else if (result.status === 'PENDING_PHOTO') {
+      return res.status(202).json(result);
     } else {
       return res.status(403).json(result);
     }
@@ -83,10 +102,23 @@ export const attachVerificationPhoto = async (req, res, next) => {
       });
     }
 
+    const student = await models.students.findById(data.student_id, req.schoolId);
+    const parent = student?.parent_id
+      ? await models.users.findById(student.parent_id, req.schoolId)
+      : null;
+    const notification = await dispatchPickupNotifications({
+      schoolId: req.schoolId,
+      studentName: data.student_name,
+      pickupPersonName: data.pickup_person_name,
+      parentPhone: parent?.phone_number,
+      timestamp: data.timestamp
+    });
+
     return res.status(200).json({
       success: true,
+      status: 'VERIFIED',
       message: 'Foto wajah tersimpan pada data verifikasi penjemputan',
-      data
+      data: { ...data, ...notification }
     });
   } catch (err) {
     next(err);

@@ -2,6 +2,7 @@ import { escapeHtml as h } from '../utils/html.js';
 
 export function renderGateReaderPage(state) {
   const isVerified = state.lastVerification?.status === 'VERIFIED';
+  const isPending = state.lastVerification?.status === 'PENDING_PHOTO';
   const isBlocked = state.lastVerification?.status === 'BLOCKED';
   const whatsappStatus = state.lastVerification?.data?.notification_status?.whatsapp;
   const pushStatus = state.lastVerification?.data?.notification_status?.push;
@@ -97,10 +98,10 @@ export function renderGateReaderPage(state) {
         <!-- Right Column: Verification Result Display -->
         <div>
           ${state.lastVerification ? `
-            <div class="edu-card" style="border-left: 8px solid ${isVerified ? '#10b981' : '#ef4444'}; animation: float-subtle 0.3s ease-out; background: white;">
+            <div class="edu-card" style="border-left: 8px solid ${isVerified ? '#10b981' : isPending ? '#f59e0b' : '#ef4444'}; animation: float-subtle 0.3s ease-out; background: white;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #f1f5f9;">
-                <span class="badge ${isVerified ? 'badge-verified' : 'badge-blocked'}" style="font-size: 1.05rem; padding: 0.5rem 1.2rem;">
-                  ${isVerified ? '✅ TERVERIFIKASI SAH' : '🚫 DITOLAK / BLOKIR'}
+                <span class="badge ${isVerified ? 'badge-verified' : isPending ? 'badge-amber' : 'badge-blocked'}" style="font-size: 1.05rem; padding: 0.5rem 1.2rem;">
+                  ${isVerified ? '✅ TERVERIFIKASI SAH' : isPending ? '📷 MENUNGGU FOTO WAJAH' : '🚫 DITOLAK / BLOKIR'}
                 </span>
                 <span style="font-size: 0.85rem; font-weight: bold; color: #64748b;">
                   ${new Date().toLocaleTimeString('id-ID')} WIB
@@ -158,6 +159,25 @@ export function renderGateReaderPage(state) {
                       <button class="btn btn-secondary" onclick="window.retryVerificationPhoto()">Coba Kamera Lagi</button>
                     </div>
                   ` : ''}
+                </div>
+              ` : isPending ? `
+                <div style="background: linear-gradient(135deg, #fffbeb, #fef3c7); border: 2px solid #f59e0b; border-radius: 16px; padding: 1.5rem; margin-bottom: 1rem;">
+                  <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.75rem;">
+                    <span style="font-size: 1.5rem;">📷</span>
+                    <h4 style="color: #92400e; margin: 0; font-size: 1.15rem;">${h(state.lastVerification.message)}</h4>
+                  </div>
+                  <p style="font-size: 0.9rem; color: #78350f; line-height: 1.5;">
+                    Kartu NFC cocok, tetapi siswa belum boleh meninggalkan gerbang sampai foto wajah berhasil diambil dan disimpan.
+                  </p>
+                  ${state.cameraError ? `
+                    <div class="camera-error-panel" role="alert">
+                      <div>
+                        <strong>Foto verifikasi belum tersimpan</strong>
+                        <p>${h(state.cameraError)}</p>
+                      </div>
+                      <button class="btn btn-secondary" onclick="window.retryVerificationPhoto()">Coba Kamera Lagi</button>
+                    </div>
+                  ` : '<p style="font-weight: 800; color: #b45309;">Kamera sedang diproses...</p>'}
                 </div>
               ` : `
                 <div style="background: linear-gradient(135deg, #fef2f2, #fff1f1); border: 2px solid #fca5a5; border-radius: 16px; padding: 1.5rem; margin-bottom: 1rem;">

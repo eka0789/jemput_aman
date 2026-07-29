@@ -17,8 +17,8 @@ try {
     teacherId: 'usr-teacher-1'
   });
 
-  if (verification.status !== 'VERIFIED') {
-    throw new Error(`Verifikasi gagal dengan status ${verification.status}`);
+  if (verification.status !== 'PENDING_PHOTO') {
+    throw new Error(`Tap NFC seharusnya PENDING_PHOTO, menerima ${verification.status}`);
   }
 
   logId = verification.data.pickup_log_id;
@@ -28,6 +28,9 @@ try {
     schoolId,
     facePhoto: photo
   });
+  if (attached.status !== 'VERIFIED') {
+    throw new Error(`Finalisasi foto gagal dengan status ${attached.status}`);
+  }
 
   const { data: storedLog, error } = await supabase
     .from('pickup_logs')

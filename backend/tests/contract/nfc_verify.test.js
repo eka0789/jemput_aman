@@ -56,7 +56,7 @@ describe('NFC Verification Contract & Logic Tests', () => {
     vi.restoreAllMocks();
   });
 
-  it('should verify registered valid NFC card tap', async () => {
+  it('should keep a valid NFC tap pending until a face photo is stored', async () => {
     mockSuccessfulLookup();
     const result = await nfcService.verifyTap({
       cardUid: activeCard.card_uid,
@@ -64,7 +64,7 @@ describe('NFC Verification Contract & Logic Tests', () => {
       studentId: student.id
     });
 
-    expect(result.status).toBe('VERIFIED');
+    expect(result.status).toBe('PENDING_PHOTO');
     expect(result.data.student.full_name).toBe('Ananda Bintang');
     expect(result.data.pickup_person.full_name).toBe('Budi Santoso');
     expect(result.data.parent.phone_number).toBe('081234567890');
@@ -100,8 +100,14 @@ describe('NFC Verification Contract & Logic Tests', () => {
     vi.spyOn(storageService, 'uploadVerificationPhoto').mockResolvedValue({
       path: `${schoolId}/verification/log-test/photo.jpg`
     });
-    vi.spyOn(pickupLogModel, 'attachVerificationPhoto').mockResolvedValue({
+    vi.spyOn(pickupLogModel, 'finalizeVerificationPhoto').mockResolvedValue({
       id: 'log-test',
+      student_id: student.id,
+      student_name: student.full_name,
+      pickup_person_id: pickupPerson.id,
+      pickup_person_name: pickupPerson.full_name,
+      timestamp: '2026-07-24T12:00:00.000Z',
+      status: 'VERIFIED',
       verification_photo: `${schoolId}/verification/log-test/photo.jpg`
     });
     vi.spyOn(storageService, 'getSignedUrl').mockResolvedValue(
@@ -115,11 +121,12 @@ describe('NFC Verification Contract & Logic Tests', () => {
     });
 
     expect(storageService.uploadVerificationPhoto).toHaveBeenCalled();
-    expect(pickupLogModel.attachVerificationPhoto).toHaveBeenCalledWith(
+    expect(pickupLogModel.finalizeVerificationPhoto).toHaveBeenCalledWith(
       'log-test',
       schoolId,
       `${schoolId}/verification/log-test/photo.jpg`
     );
+    expect(result.status).toBe('VERIFIED');
     expect(result.verification_photo).toContain('/storage/v1/object/sign/images/');
   });
 });
