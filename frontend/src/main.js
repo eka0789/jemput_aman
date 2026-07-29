@@ -200,35 +200,109 @@ window.saveWeeklySchedule = async () => {
 
 const createSecurityDialog = ({ title, description, fields, submitLabel }) => {
   const dialog = document.createElement('dialog');
+  const dialogId = `security-dialog-${Date.now()}`;
+  const titleId = `${dialogId}-title`;
+  const descriptionId = `${dialogId}-description`;
+  const errorId = `${dialogId}-error`;
   dialog.className = 'security-dialog';
+  dialog.setAttribute('aria-labelledby', titleId);
+  dialog.setAttribute('aria-describedby', descriptionId);
   dialog.innerHTML = `
     <form method="dialog" class="security-dialog-card">
-      <div class="security-dialog-icon">🔐</div>
-      <h2>${title}</h2>
-      <p>${description}</p>
-      <div class="security-dialog-fields">
-        ${fields.map(field => `
-          <label>
-            <span>${field.label}</span>
-            <input
-              name="${field.name}"
-              type="${field.type}"
-              ${field.autocomplete ? `autocomplete="${field.autocomplete}"` : ''}
-              ${field.inputmode ? `inputmode="${field.inputmode}"` : ''}
-              ${field.maxlength ? `maxlength="${field.maxlength}"` : ''}
-              required
-            />
-          </label>
-        `).join('')}
+      <div class="security-dialog-accent" aria-hidden="true"></div>
+      <div class="security-dialog-topbar">
+        <span class="security-dialog-eyebrow">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path>
+            <path d="m9 12 2 2 4-4"></path>
+          </svg>
+          Akses terlindungi
+        </span>
+        <button type="button" class="security-dialog-close" data-cancel aria-label="Tutup dialog">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18 6 6 18M6 6l12 12"></path>
+          </svg>
+        </button>
       </div>
-      <div class="security-dialog-error" role="alert" hidden></div>
+      <div class="security-dialog-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <rect width="16" height="11" x="4" y="11" rx="2"></rect>
+          <path d="M8 11V7a4 4 0 0 1 8 0v4M12 15v2"></path>
+        </svg>
+      </div>
+      <div class="security-dialog-heading">
+        <h2 id="${titleId}">${title}</h2>
+        <p id="${descriptionId}">${description}</p>
+      </div>
+      <div class="security-dialog-fields">
+        ${fields.map((field, index) => {
+          const fieldId = `${dialogId}-${field.name}-${index}`;
+          const isSecret = field.type === 'password';
+          return `
+          <label>
+            <span class="security-dialog-label">${field.label}</span>
+            <span class="security-dialog-input-wrap">
+              <svg class="security-dialog-field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                ${field.type === 'email'
+                  ? '<path d="M4 4h16v16H4z"></path><path d="m4 7 8 6 8-6"></path>'
+                  : '<rect width="16" height="11" x="4" y="11" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path>'}
+              </svg>
+              <input
+                id="${fieldId}"
+                name="${field.name}"
+                type="${field.type}"
+                aria-describedby="${errorId}"
+                ${field.autocomplete ? `autocomplete="${field.autocomplete}"` : ''}
+                ${field.inputmode ? `inputmode="${field.inputmode}"` : ''}
+                ${field.maxlength ? `maxlength="${field.maxlength}"` : ''}
+                required
+              />
+              ${isSecret ? `
+                <button
+                  type="button"
+                  class="security-dialog-password-toggle"
+                  data-toggle-password="${fieldId}"
+                  aria-label="Tampilkan ${field.label.toLowerCase()}"
+                  aria-pressed="false"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"></path>
+                    <circle cx="12" cy="12" r="2.5"></circle>
+                  </svg>
+                </button>
+              ` : ''}
+            </span>
+          </label>
+        `;
+        }).join('')}
+      </div>
+      <div id="${errorId}" class="security-dialog-error" role="alert" aria-live="assertive" hidden></div>
       <div class="security-dialog-actions">
         <button type="button" class="btn btn-secondary" data-cancel>Batal</button>
         <button type="submit" class="btn btn-primary">${submitLabel}</button>
       </div>
+      <div class="security-dialog-trust">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20 6 9 17l-5-5"></path>
+        </svg>
+        Kredensial diverifikasi secara aman oleh server JemputAman
+      </div>
     </form>
   `;
   document.body.appendChild(dialog);
+  dialog.querySelectorAll('[data-toggle-password]').forEach(button => {
+    button.addEventListener('click', () => {
+      const input = dialog.querySelector(`#${button.dataset.togglePassword}`);
+      const shouldShow = input.type === 'password';
+      input.type = shouldShow ? 'text' : 'password';
+      button.setAttribute('aria-pressed', String(shouldShow));
+      button.setAttribute(
+        'aria-label',
+        `${shouldShow ? 'Sembunyikan' : 'Tampilkan'} ${input.name === 'pin' ? 'PIN kiosk' : 'password'}`
+      );
+      input.focus();
+    });
+  });
   return dialog;
 };
 
@@ -250,7 +324,9 @@ const requestAdminLogin = () => new Promise((resolve) => {
     dialog.remove();
     resolve(result);
   };
-  dialog.querySelector('[data-cancel]').addEventListener('click', () => finish(false));
+  dialog.querySelectorAll('[data-cancel]').forEach(button => {
+    button.addEventListener('click', () => finish(false));
+  });
   dialog.addEventListener('cancel', event => {
     event.preventDefault();
     finish(false);
@@ -258,6 +334,7 @@ const requestAdminLogin = () => new Promise((resolve) => {
   form.addEventListener('submit', async event => {
     event.preventDefault();
     errorBox.hidden = true;
+    form.setAttribute('aria-busy', 'true');
     submitButton.disabled = true;
     submitButton.textContent = 'Memverifikasi...';
     try {
@@ -277,8 +354,10 @@ const requestAdminLogin = () => new Promise((resolve) => {
     } catch (error) {
       errorBox.textContent = error.message || 'Login gagal.';
       errorBox.hidden = false;
+      form.removeAttribute('aria-busy');
       submitButton.disabled = false;
       submitButton.textContent = 'Login Aman';
+      form.elements.email.focus();
     }
   });
   dialog.showModal();
@@ -309,7 +388,9 @@ const requestKioskPin = () => new Promise((resolve) => {
     dialog.remove();
     resolve(result);
   };
-  dialog.querySelector('[data-cancel]').addEventListener('click', () => finish(false));
+  dialog.querySelectorAll('[data-cancel]').forEach(button => {
+    button.addEventListener('click', () => finish(false));
+  });
   dialog.addEventListener('cancel', event => {
     event.preventDefault();
     finish(false);
@@ -317,6 +398,7 @@ const requestKioskPin = () => new Promise((resolve) => {
   form.addEventListener('submit', async event => {
     event.preventDefault();
     errorBox.hidden = true;
+    form.setAttribute('aria-busy', 'true');
     submitButton.disabled = true;
     submitButton.textContent = 'Memeriksa PIN...';
     try {
@@ -338,8 +420,10 @@ const requestKioskPin = () => new Promise((resolve) => {
       }
       errorBox.textContent = error.message || 'PIN gagal diverifikasi.';
       errorBox.hidden = false;
+      form.removeAttribute('aria-busy');
       submitButton.disabled = false;
       submitButton.textContent = 'Buka Akses Penuh';
+      form.elements.pin.focus();
     }
   });
   dialog.showModal();

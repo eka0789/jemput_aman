@@ -532,86 +532,241 @@ h1, h2, h3, h4 {
 
 /* Admin authentication and kiosk PIN */
 .security-dialog {
-  width: min(92vw, 440px);
-  max-width: 440px;
+  position: fixed;
+  inset: 0;
+  width: min(calc(100vw - 2rem), 470px);
+  max-width: 470px;
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
   padding: 0;
   border: 0;
-  border-radius: 20px;
+  border-radius: 24px;
   background: transparent;
-  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.35);
+  box-shadow: 0 28px 90px rgba(15, 23, 42, 0.42);
+  overflow: visible;
+  color: #0f172a;
+}
+
+.security-dialog[open] {
+  animation: security-dialog-enter 180ms ease-out;
 }
 
 .security-dialog::backdrop {
-  background: rgba(15, 23, 42, 0.72);
-  backdrop-filter: blur(5px);
+  background:
+    radial-gradient(circle at 50% 25%, rgba(20, 184, 166, 0.18), transparent 34%),
+    rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(8px);
+  animation: security-backdrop-enter 180ms ease-out;
 }
 
 .security-dialog-card {
-  padding: 1.6rem;
-  border: 2px solid #99f6e4;
-  border-radius: 20px;
+  position: relative;
+  max-height: calc(100dvh - 2rem);
+  padding: 1.5rem 1.65rem 1.35rem;
+  overflow-y: auto;
+  border: 1px solid rgba(153, 246, 228, 0.95);
+  border-radius: 24px;
   background: #fff;
   color: #0f172a;
 }
 
+.security-dialog-accent {
+  position: absolute;
+  top: 0;
+  right: 18%;
+  left: 18%;
+  height: 4px;
+  border-radius: 0 0 999px 999px;
+  background: linear-gradient(90deg, #14b8a6, #f59e0b);
+}
+
+.security-dialog-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 34px;
+}
+
+.security-dialog-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #0f766e;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.security-dialog-eyebrow svg,
+.security-dialog-trust svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.security-dialog-close,
+.security-dialog-password-toggle {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.security-dialog-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #f1f5f9;
+}
+
+.security-dialog-close svg,
+.security-dialog-password-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.security-dialog-close:hover,
+.security-dialog-password-toggle:hover {
+  background: #e2e8f0;
+  color: #0f766e;
+}
+
+.security-dialog-close:focus-visible,
+.security-dialog-password-toggle:focus-visible {
+  outline: 3px solid rgba(20, 184, 166, 0.28);
+  outline-offset: 2px;
+}
+
 .security-dialog-icon {
   display: grid;
-  width: 54px;
-  height: 54px;
-  margin: 0 auto 0.75rem;
+  width: 64px;
+  height: 64px;
+  margin: 0.35rem auto 0.85rem;
   place-items: center;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #ccfbf1, #fef3c7);
-  font-size: 1.7rem;
+  border: 1px solid #99f6e4;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #ecfdf5, #fef3c7);
+  color: #0f766e;
+  box-shadow: 0 10px 28px rgba(15, 118, 110, 0.14);
+}
+
+.security-dialog-icon svg {
+  width: 31px;
+  height: 31px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.9;
+}
+
+.security-dialog-heading {
+  max-width: 380px;
+  margin: 0 auto;
 }
 
 .security-dialog h2 {
   margin: 0;
-  color: #0f766e;
+  color: #064e3b;
+  font-size: clamp(1.35rem, 5vw, 1.65rem);
+  line-height: 1.2;
   text-align: center;
 }
 
 .security-dialog p {
-  margin: 0.45rem 0 1.2rem;
-  color: #64748b;
+  margin: 0.55rem 0 1.35rem;
+  color: #475569;
   font-size: 0.88rem;
-  line-height: 1.5;
+  line-height: 1.55;
   text-align: center;
 }
 
 .security-dialog-fields {
   display: grid;
-  gap: 0.85rem;
+  gap: 1rem;
 }
 
 .security-dialog-fields label {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.42rem;
   color: #334155;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 800;
+}
+
+.security-dialog-label {
+  padding-left: 0.12rem;
+}
+
+.security-dialog-input-wrap {
+  position: relative;
+  display: block;
 }
 
 .security-dialog-fields input {
   width: 100%;
-  padding: 0.78rem 0.85rem;
+  min-height: 50px;
+  padding: 0.78rem 2.85rem 0.78rem 2.7rem;
   border: 1.5px solid #cbd5e1;
-  border-radius: 10px;
+  border-radius: 13px;
   background: #f8fafc;
   color: #0f172a;
   font: inherit;
+  font-size: 0.92rem;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
 .security-dialog-fields input:focus {
   border-color: #14b8a6;
-  outline: 3px solid rgba(20, 184, 166, 0.15);
+  outline: 0;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.14);
+}
+
+.security-dialog-field-icon {
+  position: absolute;
+  top: 50%;
+  left: 0.9rem;
+  z-index: 1;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: #64748b;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.security-dialog-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.65rem;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  transform: translateY(-50%);
 }
 
 .security-dialog-error {
-  margin-top: 0.85rem;
-  padding: 0.7rem;
+  margin-top: 1rem;
+  padding: 0.78rem 0.9rem;
   border: 1px solid #fca5a5;
-  border-radius: 9px;
+  border-radius: 11px;
   background: #fef2f2;
   color: #b91c1c;
   font-size: 0.8rem;
@@ -621,10 +776,85 @@ h1, h2, h3, h4 {
 .security-dialog-actions {
   display: grid;
   grid-template-columns: 1fr 1.4fr;
-  gap: 0.65rem;
-  margin-top: 1.1rem;
+  gap: 0.7rem;
+  margin-top: 1.25rem;
 }
 
 .security-dialog-actions .btn {
   width: 100%;
+  min-height: 48px;
+  border-radius: 13px;
+}
+
+.security-dialog-actions .btn:focus-visible {
+  outline: 3px solid rgba(20, 184, 166, 0.28);
+  outline-offset: 2px;
+}
+
+.security-dialog-actions .btn:disabled {
+  cursor: wait;
+  opacity: 0.7;
+  transform: none;
+}
+
+.security-dialog-trust {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 1rem;
+  color: #64748b;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
+@keyframes security-dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes security-backdrop-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 540px) {
+  .security-dialog {
+    width: calc(100vw - 1.25rem);
+    max-height: calc(100dvh - 1.25rem);
+  }
+
+  .security-dialog-card {
+    max-height: calc(100dvh - 1.25rem);
+    padding: 1.15rem 1.05rem 1rem;
+    border-radius: 20px;
+  }
+
+  .security-dialog-icon {
+    width: 56px;
+    height: 56px;
+    margin-top: 0.1rem;
+  }
+
+  .security-dialog-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .security-dialog-actions .btn-primary {
+    grid-row: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .security-dialog[open],
+  .security-dialog::backdrop {
+    animation: none;
+  }
 }
