@@ -50,6 +50,12 @@ app.post(
 // API Status Health Check
 app.get('/api/health', async (req, res) => {
   let database = 'NOT_CONFIGURED';
+  const authentication = (
+    env.JWT_SECRET
+    && env.ADMIN_PASSWORD_HASH
+    && env.FOUNDATION_PASSWORD_HASH
+    && env.KIOSK_PIN_HASH
+  ) ? 'CONFIGURED' : 'INCOMPLETE';
   if (isSupabaseConfigured) {
     const { error } = await supabase.from('schools').select('id', { head: true, count: 'exact' });
     database = error
@@ -59,11 +65,12 @@ app.get('/api/health', async (req, res) => {
         : 'SECRET_KEY_REQUIRED';
   }
 
-  const healthy = database === 'CONNECTED';
+  const healthy = database === 'CONNECTED' && authentication === 'CONFIGURED';
   res.status(healthy ? 200 : 503).json({
     status: healthy ? 'HEALTHY' : 'DEGRADED',
     service: 'JemputAman Multi-Tenant API Service',
     database,
+    authentication,
     time: new Date().toISOString()
   });
 });
