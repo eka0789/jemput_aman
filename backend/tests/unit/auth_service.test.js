@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { pbkdf2Sync } from 'crypto';
 import jwt from 'jsonwebtoken';
 import { env } from '../../src/config/env.js';
 import { models } from '../../src/models/schema.js';
@@ -27,6 +28,15 @@ describe('Admin authentication service', () => {
     expect(hash).not.toContain('password-kuat');
     expect(verifyCredential('password-kuat', hash)).toBe(true);
     expect(verifyCredential('password-salah', hash)).toBe(false);
+  });
+
+  it('verifies hashes generated with binary salt by the production setup script', () => {
+    const salt = Buffer.from('00112233445566778899aabbccddeeff', 'hex');
+    const digest = pbkdf2Sync('Admin!234', salt, 210_000, 32, 'sha256').toString('hex');
+    const encoded = `pbkdf2_sha256$210000$${salt.toString('hex')}$${digest}`;
+
+    expect(verifyCredential('Admin!234', encoded)).toBe(true);
+    expect(verifyCredential('password-salah', encoded)).toBe(false);
   });
 
   it('issues a scoped JWT for a valid admin login', async () => {

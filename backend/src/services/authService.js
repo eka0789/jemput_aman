@@ -23,7 +23,8 @@ export const createCredentialHash = (secret, salt = randomBytes(16).toString('he
   if (typeof secret !== 'string' || secret.length < 4) {
     throw new Error('Kredensial minimal 4 karakter');
   }
-  const digest = pbkdf2Sync(secret, salt, HASH_ITERATIONS, HASH_BYTES, HASH_ALGORITHM)
+  const saltBytes = /^[a-f0-9]{32}$/i.test(salt) ? Buffer.from(salt, 'hex') : Buffer.from(salt);
+  const digest = pbkdf2Sync(secret, saltBytes, HASH_ITERATIONS, HASH_BYTES, HASH_ALGORITHM)
     .toString('hex');
   return `${HASH_PREFIX}$${HASH_ITERATIONS}$${salt}$${digest}`;
 };
@@ -40,9 +41,15 @@ export const verifyCredential = (secret, encodedHash) => {
     || !/^[a-f0-9]{64}$/i.test(expectedHex || '')
   ) return false;
 
-  const actual = pbkdf2Sync(secret, salt, iterations, HASH_BYTES, HASH_ALGORITHM);
   const expected = Buffer.from(expectedHex, 'hex');
-  return actual.length === expected.length && timingSafeEqual(actual, expected);
+  const saltBytes = /^[a-f0-9]{32}$/i.test(salt) ? Buffer.from(salt, 'hex') : Buffer.from(salt);
+  const actual = pbkdf2Sync(secret, saltBytes, iterations, HASH_BYTES, HASH_ALGORITHM);
+  if (actual.length === expected.length && timingSafeEqual(actual, expected)) return true;
+
+  // Compatibility for hashes created by the earlier Node helper that treated
+  // the hexadecimal salt as UTF-8 text.
+  const legacyActual = pbkdf2Sync(secret, salt, iterations, HASH_BYTES, HASH_ALGORITHM);
+  return legacyActual.length === expected.length && timingSafeEqual(legacyActual, expected);
 };
 
 const passwordHashForRole = role => (
