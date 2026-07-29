@@ -123,11 +123,19 @@ export function renderGateReaderPage(state) {
                       <span class="badge badge-sky" style="font-size: 0.75rem; margin-top: 0.25rem;">${h(state.lastVerification.data.student.class_name)}</span>
                     </div>
 
-                    <!-- Pickup Person Profile Box -->
+                    <!-- Pickup Person / Live Verification Photo Box -->
                     <div style="text-align: center; background: white; padding: 1rem; border-radius: 14px; border: 1px solid #99f6e4; box-shadow: 0 4px 12px rgba(15, 118, 110, 0.1);">
-                      <img src="${h(state.lastVerification.data.pickup_person.photo_url)}" style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 4px solid #0f766e; margin-bottom: 0.5rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" />
+                      <img
+                        src="${h(state.lastVerification.data.verification_photo || state.lastVerification.data.pickup_person.photo_url)}"
+                        alt="${state.lastVerification.data.verification_photo ? 'Foto wajah saat verifikasi' : 'Foto profil penjemput'}"
+                        style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 4px solid #0f766e; margin-bottom: 0.5rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1);"
+                      />
                       <div style="font-weight: 800; font-size: 1.05rem; color: #0f766e;">${h(state.lastVerification.data.pickup_person.full_name)}</div>
-                      <span class="badge badge-amber" style="font-size: 0.75rem; margin-top: 0.25rem;">${h(state.lastVerification.data.pickup_person.relationship)}</span>
+                      <span class="badge ${state.lastVerification.data.verification_photo ? 'badge-verified' : 'badge-amber'}" style="font-size: 0.75rem; margin-top: 0.25rem;">
+                        ${state.lastVerification.data.verification_photo
+                          ? 'Foto Verifikasi Langsung'
+                          : h(state.lastVerification.data.pickup_person.relationship)}
+                      </span>
                     </div>
                   </div>
 

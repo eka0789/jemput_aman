@@ -511,6 +511,7 @@ const storeVerificationPhoto = async (verification, facePhoto) => {
   if (localLog) {
     localLog.status = result.status;
     localLog.notes = result.message;
+    localLog.verification_photo = result.data?.verification_photo || null;
   }
 };
 
@@ -571,7 +572,8 @@ window.simulateNfcTap = async (cardUid) => {
         verification_method: 'NFC_TAP',
         status: result.status,
         timestamp: result.data.timestamp,
-        notes: result.message
+        notes: result.message,
+        verification_photo: result.data.verification_photo || null
       });
     }
     render();
