@@ -33,7 +33,10 @@ export const authenticateJWT = (req, res, next) => {
   const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, env.JWT_SECRET);
+    const decoded = jwt.verify(token, env.JWT_SECRET, {
+      issuer: 'jemput-aman',
+      audience: 'jemput-aman-web'
+    });
     if (!decoded?.id || !decoded?.role) {
       return res.status(401).json({
         error: 'UNAUTHORIZED',

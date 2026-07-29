@@ -5,6 +5,17 @@ const createId = (prefix) => `${prefix}-${Date.now()}-${Math.floor(Math.random()
 
 export const models = {
   users: {
+    findByEmail: async (email) => (
+      unwrapSupabase(
+        await client()
+          .from('app_users')
+          .select('*')
+          .ilike('email', email.trim())
+          .in('role', ['ADMIN', 'FOUNDATION'])
+          .maybeSingle(),
+        'membaca akun pengelola'
+      )
+    ),
     findById: async (id, schoolId) => {
       let query = client().from('app_users').select('*').eq('id', id);
       if (schoolId) query = query.eq('school_id', schoolId);

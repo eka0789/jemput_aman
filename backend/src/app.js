@@ -20,6 +20,7 @@ import { errorHandler } from './middlewares/errorHandler.js';
 import { env } from './config/env.js';
 import { isSupabaseConfigured, supabase } from './config/supabase.js';
 import { rateLimit } from './middlewares/rateLimit.js';
+import { getSession, login, unlockKiosk } from './controllers/authController.js';
 
 const app = express();
 
@@ -39,6 +40,12 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.json({ limit: '2mb' }));
+
+app.post(
+  '/api/v1/auth/login',
+  rateLimit({ windowMs: 15 * 60 * 1000, max: 8, key: req => `login:${req.ip}` }),
+  login
+);
 
 // API Status Health Check
 app.get('/api/health', async (req, res) => {
@@ -63,6 +70,14 @@ app.get('/api/health', async (req, res) => {
 
 // All application APIs require an authenticated identity and tenant context.
 app.use('/api/v1', authenticateJWT, tenantMiddleware);
+
+app.get('/api/v1/auth/session', requireRole('ADMIN', 'FOUNDATION'), getSession);
+app.post(
+  '/api/v1/auth/kiosk/unlock',
+  rateLimit({ windowMs: 10 * 60 * 1000, max: 8, key: req => `kiosk:${req.ip}:${req.user?.id || ''}` }),
+  requireRole('ADMIN', 'FOUNDATION'),
+  unlockKiosk
+);
 
 // Pickup Verification Routes
 app.use('/api/v1/pickup', pickupRoutes);

@@ -15,15 +15,16 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL
 const SCHOOL_ID = import.meta.env.VITE_SCHOOL_ID || '1001-tk-ceria-salatiga';
 
 const getAuthToken = () => localStorage.getItem('jemput_aman_access_token');
-const getTokenRole = () => {
+const getTokenPayload = () => {
   const token = getAuthToken();
   if (!token) return null;
   try {
-    return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).role;
+    return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
   } catch {
     return null;
   }
 };
+const getTokenRole = () => getTokenPayload()?.role || null;
 
 const apiFetch = (path, options = {}, developmentRole = 'TEACHER') => {
   const token = getAuthToken();
@@ -41,7 +42,12 @@ const readJsonResponse = async (response, fallbackMessage) => {
   } catch {
     throw new Error(fallbackMessage);
   }
-  if (!response.ok) throw new Error(result.message || fallbackMessage);
+  if (!response.ok) {
+    const error = new Error(result.message || fallbackMessage);
+    error.status = response.status;
+    error.code = result.error;
+    throw error;
+  }
   return result;
 };
 
@@ -51,8 +57,8 @@ const state = {
   scheduleStudentId: '1111',
   weeklySchedules: [],
   isKioskLocked: true, // DEFAULT TRUE FOR GATE TABLET SECURITY!
-  securityPin: import.meta.env.VITE_KIOSK_PIN || (import.meta.env.DEV ? '1234' : ''),
   showAddStudent: false,
+  authUser: getTokenPayload(),
   lastVerification: null,
   cameraError: '',
   showBindModal: false,
@@ -113,7 +119,7 @@ function render() {
   }
 
   app.innerHTML = `
-    ${renderPageShell(state.activeTab, state.isKioskLocked)}
+    ${renderPageShell(state.activeTab, state.isKioskLocked, state.authUser)}
     <main style="padding-bottom: 3rem;">${contentHtml}</main>
   `;
 
@@ -189,22 +195,178 @@ window.saveWeeklySchedule = async () => {
   }
 };
 
-window.promptUnlockKiosk = () => {
-  const role = getTokenRole();
+const createSecurityDialog = ({ title, description, fields, submitLabel }) => {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'security-dialog';
+  dialog.innerHTML = `
+    <form method="dialog" class="security-dialog-card">
+      <div class="security-dialog-icon">🔐</div>
+      <h2>${title}</h2>
+      <p>${description}</p>
+      <div class="security-dialog-fields">
+        ${fields.map(field => `
+          <label>
+            <span>${field.label}</span>
+            <input
+              name="${field.name}"
+              type="${field.type}"
+              ${field.autocomplete ? `autocomplete="${field.autocomplete}"` : ''}
+              ${field.inputmode ? `inputmode="${field.inputmode}"` : ''}
+              ${field.maxlength ? `maxlength="${field.maxlength}"` : ''}
+              required
+            />
+          </label>
+        `).join('')}
+      </div>
+      <div class="security-dialog-error" role="alert" hidden></div>
+      <div class="security-dialog-actions">
+        <button type="button" class="btn btn-secondary" data-cancel>Batal</button>
+        <button type="submit" class="btn btn-primary">${submitLabel}</button>
+      </div>
+    </form>
+  `;
+  document.body.appendChild(dialog);
+  return dialog;
+};
+
+const requestAdminLogin = () => new Promise((resolve) => {
+  const dialog = createSecurityDialog({
+    title: 'Login Admin / Yayasan',
+    description: 'Masuk dengan akun pengelola yang terdaftar sebelum membuka mode akses penuh.',
+    fields: [
+      { name: 'email', label: 'Email', type: 'email', autocomplete: 'username' },
+      { name: 'password', label: 'Password', type: 'password', autocomplete: 'current-password' }
+    ],
+    submitLabel: 'Login Aman'
+  });
+  const form = dialog.querySelector('form');
+  const errorBox = dialog.querySelector('.security-dialog-error');
+  const submitButton = form.querySelector('[type="submit"]');
+  const finish = result => {
+    dialog.close();
+    dialog.remove();
+    resolve(result);
+  };
+  dialog.querySelector('[data-cancel]').addEventListener('click', () => finish(false));
+  dialog.addEventListener('cancel', event => {
+    event.preventDefault();
+    finish(false);
+  });
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    errorBox.hidden = true;
+    submitButton.disabled = true;
+    submitButton.textContent = 'Memverifikasi...';
+    try {
+      const formData = new FormData(form);
+      const response = await apiFetch('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.get('email'),
+          password: formData.get('password')
+        })
+      }, 'ADMIN');
+      const result = await readJsonResponse(response, 'Login gagal.');
+      localStorage.setItem('jemput_aman_access_token', result.data.access_token);
+      state.authUser = result.data.user;
+      finish(true);
+    } catch (error) {
+      errorBox.textContent = error.message || 'Login gagal.';
+      errorBox.hidden = false;
+      submitButton.disabled = false;
+      submitButton.textContent = 'Login Aman';
+    }
+  });
+  dialog.showModal();
+  form.elements.email.focus();
+});
+
+const requestKioskPin = () => new Promise((resolve) => {
+  const dialog = createSecurityDialog({
+    title: 'Masukkan PIN Kiosk',
+    description: 'Akun pengelola telah terverifikasi. Masukkan PIN perangkat untuk melanjutkan.',
+    fields: [
+      {
+        name: 'pin',
+        label: 'PIN Kiosk',
+        type: 'password',
+        autocomplete: 'one-time-code',
+        inputmode: 'numeric',
+        maxlength: '12'
+      }
+    ],
+    submitLabel: 'Buka Akses Penuh'
+  });
+  const form = dialog.querySelector('form');
+  const errorBox = dialog.querySelector('.security-dialog-error');
+  const submitButton = form.querySelector('[type="submit"]');
+  const finish = result => {
+    dialog.close();
+    dialog.remove();
+    resolve(result);
+  };
+  dialog.querySelector('[data-cancel]').addEventListener('click', () => finish(false));
+  dialog.addEventListener('cancel', event => {
+    event.preventDefault();
+    finish(false);
+  });
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    errorBox.hidden = true;
+    submitButton.disabled = true;
+    submitButton.textContent = 'Memeriksa PIN...';
+    try {
+      const formData = new FormData(form);
+      const response = await apiFetch('/auth/kiosk/unlock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: formData.get('pin') })
+      }, 'ADMIN');
+      const result = await readJsonResponse(response, 'PIN gagal diverifikasi.');
+      finish(Boolean(result.data?.unlocked));
+    } catch (error) {
+      if (error.status === 401 && error.code === 'UNAUTHORIZED') {
+        localStorage.removeItem('jemput_aman_access_token');
+        state.authUser = null;
+        finish(false);
+        alert('Sesi login telah kedaluwarsa. Silakan login kembali.');
+        return;
+      }
+      errorBox.textContent = error.message || 'PIN gagal diverifikasi.';
+      errorBox.hidden = false;
+      submitButton.disabled = false;
+      submitButton.textContent = 'Buka Akses Penuh';
+    }
+  });
+  dialog.showModal();
+  form.elements.pin.focus();
+});
+
+window.promptUnlockKiosk = async () => {
+  let role = getTokenRole();
   if (!import.meta.env.DEV && !['ADMIN', 'FOUNDATION'].includes(role)) {
-    alert('Akses penuh hanya dapat dibuka oleh akun Admin atau Yayasan yang telah login.');
+    const loggedIn = await requestAdminLogin();
+    if (!loggedIn) return;
+    role = getTokenRole();
+  }
+  if (!import.meta.env.DEV && !['ADMIN', 'FOUNDATION'].includes(role)) {
+    alert('Akun tidak memiliki peran Admin atau Yayasan.');
     return;
   }
-  const inputPin = import.meta.env.DEV
-    ? prompt('Masukkan PIN kiosk development:')
-    : state.securityPin;
-  if (inputPin === state.securityPin) {
-    state.isKioskLocked = false;
-    alert('🔓 AKSES DIBUKA! Seluruh menu Admin, Data Siswa, & Laporan Yayasan sekarang dapat diakses.');
-    render();
-  } else if (inputPin !== null) {
-    alert('❌ PIN Salah! Akses menu tetap dikunci.');
-  }
+  const unlocked = await requestKioskPin();
+  if (!unlocked) return;
+  state.isKioskLocked = false;
+  alert('🔓 AKSES DIBUKA! Seluruh menu pengelolaan sekarang dapat diakses.');
+  render();
+};
+
+window.logoutAdmin = () => {
+  localStorage.removeItem('jemput_aman_access_token');
+  state.authUser = null;
+  state.isKioskLocked = true;
+  state.activeTab = 'reader';
+  render();
 };
 
 // Sub-Tab Switcher
@@ -738,7 +900,22 @@ const hydrateProfileData = async () => {
   }
 };
 
+const hydrateAuthSession = async () => {
+  if (!getAuthToken()) return;
+  try {
+    const response = await apiFetch('/auth/session', {}, 'ADMIN');
+    const result = await readJsonResponse(response, 'Sesi login tidak valid.');
+    state.authUser = result.data.user;
+  } catch {
+    localStorage.removeItem('jemput_aman_access_token');
+    state.authUser = null;
+    state.isKioskLocked = true;
+  }
+  render();
+};
+
 // Initial Render
 render();
+hydrateAuthSession();
 hydrateProfileData();
 registerServiceWorker().catch(error => console.warn('Service worker registration failed:', error));

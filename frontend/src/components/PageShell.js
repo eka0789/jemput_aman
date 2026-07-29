@@ -1,4 +1,6 @@
-export function renderPageShell(activeTab, isKioskLocked) {
+import { escapeHtml as h } from '../utils/html.js';
+
+export function renderPageShell(activeTab, isKioskLocked, authUser = null) {
   return `
     <header class="edu-card-header" style="margin-bottom: 2rem; padding: 1.25rem 2rem;">
       <div class="container" style="padding: 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.25rem;">
@@ -26,7 +28,9 @@ export function renderPageShell(activeTab, isKioskLocked) {
         <div style="display: flex; align-items: center; gap: 0.75rem;">
           <div style="background: rgba(255,255,255,0.08); padding: 0.4rem 1rem; border-radius: 9999px; border: 1px solid rgba(255,255,255,0.15); display: flex; align-items: center; gap: 0.5rem;">
             <span style="font-size: 1rem;">🏫</span>
-            <span style="font-size: 0.8rem; font-weight: bold; color: #ffffff;">PAUD/TK Ceria Salatiga</span>
+            <span style="font-size: 0.8rem; font-weight: bold; color: #ffffff;">
+              ${authUser ? `${h(authUser.full_name || authUser.role)} · ${h(authUser.role)}` : 'PAUD/TK Ceria Salatiga'}
+            </span>
           </div>
 
           ${isKioskLocked ? `
@@ -38,6 +42,11 @@ export function renderPageShell(activeTab, isKioskLocked) {
               🔒 Kunci Mode Gerbang (Kiosk)
             </button>
           `}
+          ${authUser ? `
+            <button class="btn btn-secondary" onclick="window.logoutAdmin()" style="font-size: 0.82rem; padding: 0.45rem 0.9rem;">
+              Keluar
+            </button>
+          ` : ''}
         </div>
 
       </div>

@@ -16,6 +16,10 @@ export const env = {
     || ((process.env.NODE_ENV || 'development') !== 'production'
       ? 'jemput_aman_development_only_secret'
       : ''),
+  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '8h',
+  ADMIN_PASSWORD_HASH: process.env.ADMIN_PASSWORD_HASH || '',
+  FOUNDATION_PASSWORD_HASH: process.env.FOUNDATION_PASSWORD_HASH || '',
+  KIOSK_PIN_HASH: process.env.KIOSK_PIN_HASH || '',
   AUTH_ALLOW_DEV_MOCK:
     (process.env.AUTH_ALLOW_DEV_MOCK || 'true').toLowerCase() === 'true',
   APP_TIME_ZONE: process.env.APP_TIME_ZONE || 'Asia/Jakarta',
