@@ -69,9 +69,6 @@ export function renderDataManagementPage(state) {
               <button class="btn btn-amber" onclick="window.startNfcRegistrationReader()" style="width: 100%; font-size: 0.85rem; margin-bottom: 0.65rem;">
                 📡 Aktifkan Pemindai Kartu Fisik
               </button>
-              <button class="btn btn-amber" onclick="window.autoFillNewNfcUid()" style="width: 100%; font-size: 0.85rem;">
-                ⚡ Tap Simulasi Kartu Baru (Auto-Detect UID)
-              </button>
             </div>
 
             <!-- Input Form for Pickup Person + NFC -->

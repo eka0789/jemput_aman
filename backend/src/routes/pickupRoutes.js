@@ -5,7 +5,7 @@ import { requireRole } from '../middlewares/auth.js';
 const router = express.Router();
 
 // POST /api/v1/pickup/verify-nfc
-router.post('/verify-nfc', requireRole('TEACHER', 'ADMIN', 'FOUNDATION'), verifyNfcTap);
-router.post('/verification-photo', requireRole('TEACHER', 'ADMIN', 'FOUNDATION'), attachVerificationPhoto);
+router.post('/verify-nfc', requireRole('TEACHER', 'ADMIN'), verifyNfcTap);
+router.post('/verification-photo', requireRole('TEACHER', 'ADMIN'), attachVerificationPhoto);
 
 export default router;

@@ -637,18 +637,6 @@ window.startNfcRegistrationReader = async () => {
   }
 };
 
-window.autoFillNewNfcUid = () => {
-  const randomUid = '04:' + Array.from({length: 6}, () => Math.floor(Math.random()*256).toString(16).padStart(2, '0').toUpperCase()).join(':');
-  state.newCardUid = randomUid;
-  const uidInput = document.getElementById('reg_nfc_uid');
-  if (uidInput) uidInput.value = randomUid;
-  const status = document.getElementById('nfc-registration-status');
-  if (status) {
-    status.textContent = `Simulasi kartu berhasil. UID: ${randomUid}`;
-    status.style.color = '#99f6e4';
-  }
-};
-
 window.toggleNewPickupPersonFields = show => {
   const fields = document.getElementById('new-pickup-person-fields');
   if (fields) fields.style.display = show ? 'grid' : 'none';
@@ -660,7 +648,7 @@ window.submitFullNfcRegistration = async () => {
   const studentSelect = document.getElementById('reg_student_id');
 
   if (!uid) {
-    alert('Silakan tempelkan kartu NFC atau klik tombol simulasi tap otomatis untuk membaca UID kartu!');
+    alert('Silakan aktifkan pemindai lalu tempelkan kartu NFC untuk membaca UID kartu.');
     return;
   }
   if (!studentSelect?.value) {
@@ -888,37 +876,14 @@ const captureVerificationPhoto = async ({ retake = false } = {}) => {
 window.retryVerificationPhoto = captureVerificationPhoto;
 window.retakeVerificationPhoto = () => captureVerificationPhoto({ retake: true });
 
-window.simulateNfcTap = async (cardUid, simulationMode = true) => {
-  const localCard = state.cards.find(c => c.uid === cardUid);
-  if (localCard && localCard.status !== 'ACTIVE') {
-    state.lastVerification = {
-      status: 'BLOCKED',
-      message: 'AKSES DITOLAK: Kartu NFC Telah Dilaporkan Hilang / Nonaktif!'
-    };
-    state.pickupLogs.unshift({
-      id: `log-${Date.now()}`,
-      student_name: localCard.student,
-      pickup_person_name: localCard.holder,
-      verification_method: 'NFC_TAP',
-      status: 'BLOCKED',
-      timestamp: new Date().toISOString(),
-      notes: 'Percobaan pengetapan kartu berstatus LOST'
-    });
-    render();
-    return;
-  }
-
+window.handleNfcTap = async cardUid => {
   try {
     const response = await apiFetch('/pickup/verify-nfc', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        card_uid: cardUid,
-        student_id: simulationMode ? '1111' : undefined,
-        simulation: simulationMode
-      })
+      body: JSON.stringify({ card_uid: cardUid })
     }, 'TEACHER');
     const result = await response.json();
     state.lastVerification = result;
@@ -931,7 +896,7 @@ window.simulateNfcTap = async (cardUid, simulationMode = true) => {
         id: result.data.pickup_log_id,
         student_name: result.data.student.full_name,
         pickup_person_name: `${result.data.pickup_person.full_name} (${result.data.pickup_person.relationship})`,
-        verification_method: result.data.simulation_mode ? 'NFC_SIMULATION' : 'NFC_TAP',
+        verification_method: 'NFC_TAP',
         status: result.status,
         timestamp: result.data.timestamp,
         notes: result.message,
@@ -964,7 +929,7 @@ window.simulateNfcTap = async (cardUid, simulationMode = true) => {
 
 window.startNfcReader = async () => {
   const started = await webNfc.startScan(
-    card => window.simulateNfcTap(card.serialNumber, false),
+    card => window.handleNfcTap(card.serialNumber),
     message => alert(message)
   );
   if (started) alert('Reader NFC aktif. Tempelkan kartu pada perangkat.');

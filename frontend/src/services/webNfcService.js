@@ -26,7 +26,7 @@ export class WebNfcService {
 
   async startScan(onCardRead, onError, { once = false } = {}) {
     if (!this.isSupported()) {
-      onError?.('Web NFC API tidak didukung pada peramban ini. Gunakan Android Chrome 89+ atau gunakan Simulator Tap.');
+      onError?.('Web NFC API tidak didukung pada peramban ini. Gunakan Android Chrome 89+ pada perangkat yang memiliki NFC.');
       return false;
     }
 

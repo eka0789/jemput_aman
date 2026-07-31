@@ -70,27 +70,6 @@ describe('NFC Verification Contract & Logic Tests', () => {
     expect(result.data.parent.phone_number).toBe('081234567890');
   });
 
-  it('should allow an authorized simulator card outside the daily schedule without sending a real tap', async () => {
-    mockSuccessfulLookup();
-    vi.mocked(scheduleModel.findByStudent).mockResolvedValue([
-      { student_id: student.id, pickup_person_id: 'different-person', day_of_week: 'WED' }
-    ]);
-
-    const result = await nfcService.verifyTap({
-      cardUid: activeCard.card_uid,
-      schoolId,
-      studentId: student.id,
-      simulationMode: true,
-      verificationDate: new Date('2026-07-29T08:00:00+07:00')
-    });
-
-    expect(result.status).toBe('PENDING_PHOTO');
-    expect(result.data.simulation_mode).toBe(true);
-    expect(pickupLogModel.create).toHaveBeenCalledWith(expect.objectContaining({
-      verification_method: 'NFC_SIMULATION'
-    }));
-  });
-
   it('should block unregistered NFC card tap', async () => {
     vi.spyOn(models.nfcCards, 'findByUid').mockResolvedValue(null);
     vi.spyOn(pickupLogModel, 'create').mockResolvedValue({ id: 'log-blocked' });
@@ -151,54 +130,4 @@ describe('NFC Verification Contract & Logic Tests', () => {
     expect(result.verification_photo).toContain('/storage/v1/object/sign/images/');
   });
 
-  it('should allow foundation photo upload only for NFC simulation logs', async () => {
-    vi.spyOn(pickupLogModel, 'findById').mockResolvedValue({
-      id: 'log-simulation',
-      verification_method: 'NFC_SIMULATION'
-    });
-    vi.spyOn(storageService, 'uploadVerificationPhoto').mockResolvedValue({
-      path: `${schoolId}/verification/log-simulation/photo.jpg`
-    });
-    vi.spyOn(pickupLogModel, 'finalizeVerificationPhoto').mockResolvedValue({
-      id: 'log-simulation',
-      student_id: student.id,
-      student_name: student.full_name,
-      pickup_person_id: pickupPerson.id,
-      pickup_person_name: pickupPerson.full_name,
-      timestamp: '2026-07-29T08:00:00.000Z',
-      status: 'VERIFIED',
-      verification_method: 'NFC_SIMULATION',
-      verification_photo: `${schoolId}/verification/log-simulation/photo.jpg`
-    });
-    vi.spyOn(storageService, 'getSignedUrl').mockResolvedValue('https://signed.example/photo.jpg');
-
-    const result = await nfcService.attachVerificationPhoto({
-      pickupLogId: 'log-simulation',
-      schoolId,
-      facePhoto: 'data:image/jpeg;base64,ZmFjZS1zYW1wbGUtZGF0YQ==',
-      simulationOnly: true
-    });
-
-    expect(result.status).toBe('VERIFIED');
-    expect(result.verification_method).toBe('NFC_SIMULATION');
-  });
-
-  it('should reject foundation photo upload for a physical NFC log', async () => {
-    vi.spyOn(pickupLogModel, 'findById').mockResolvedValue({
-      id: 'log-physical',
-      verification_method: 'NFC_TAP'
-    });
-    const finalizePhoto = vi.spyOn(pickupLogModel, 'finalizeVerificationPhoto');
-
-    await expect(nfcService.attachVerificationPhoto({
-      pickupLogId: 'log-physical',
-      schoolId,
-      facePhoto: 'data:image/jpeg;base64,ZmFjZS1zYW1wbGUtZGF0YQ==',
-      simulationOnly: true
-    })).rejects.toMatchObject({
-      statusCode: 403,
-      code: 'FOUNDATION_SIMULATION_ONLY'
-    });
-    expect(finalizePhoto).not.toHaveBeenCalled();
-  });
 });

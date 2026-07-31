@@ -58,8 +58,7 @@ export const nfcService = {
     schoolId,
     teacherId = 'usr-teacher-1',
     facePhoto = null,
-    verificationDate = new Date(),
-    simulationMode = false
+    verificationDate = new Date()
   }) => {
     // 1. Find NFC card in store
     const card = await models.nfcCards.findByUid(cardUid, schoolId);
@@ -166,7 +165,7 @@ export const nfcService = {
     const schedules = await scheduleModel.findByStudent(targetStudent.id);
     const currentDay = dayCodeFor(verificationDate);
     const scheduledToday = schedules.find(item => item.day_of_week === currentDay);
-    if (!simulationMode && schedules.length > 0 && scheduledToday?.pickup_person_id !== pickupPerson.id) {
+    if (schedules.length > 0 && scheduledToday?.pickup_person_id !== pickupPerson.id) {
       await pickupLogModel.create({
         school_id: schoolId,
         student_id: targetStudent.id,
@@ -197,11 +196,9 @@ export const nfcService = {
       pickup_person_name: `${pickupPerson.full_name} (${pickupPerson.relationship})`,
       nfc_card_id: card.id,
       duty_teacher_id: teacherId,
-      verification_method: simulationMode ? 'NFC_SIMULATION' : 'NFC_TAP',
+      verification_method: 'NFC_TAP',
       status: 'PENDING_PHOTO',
-      notes: simulationMode
-        ? 'Simulasi verifikasi NFC berhasil; jadwal harian dan notifikasi dilewati'
-        : 'Verifikasi pengetapan NFC berhasil di gerbang sekolah',
+      notes: 'Verifikasi pengetapan NFC berhasil di gerbang sekolah',
       verification_photo: null
     });
 
@@ -242,7 +239,6 @@ export const nfcService = {
         } : null,
         timestamp: log.timestamp,
         notification_sent: false,
-        simulation_mode: simulationMode,
         verification_photo: log.verification_photo
           ? await storageService.getSignedUrl(log.verification_photo)
           : null
@@ -252,20 +248,8 @@ export const nfcService = {
   attachVerificationPhoto: async ({
     pickupLogId,
     schoolId,
-    facePhoto,
-    simulationOnly = false
+    facePhoto
   }) => {
-    if (simulationOnly) {
-      const pendingLog = await pickupLogModel.findById(pickupLogId, schoolId);
-      if (!pendingLog) return null;
-      if (pendingLog.verification_method !== 'NFC_SIMULATION') {
-        const error = new Error('Akun Yayasan hanya dapat menyimpan foto untuk mode simulasi NFC');
-        error.statusCode = 403;
-        error.code = 'FOUNDATION_SIMULATION_ONLY';
-        throw error;
-      }
-    }
-
     const log = await storeVerificationPhoto({ pickupLogId, schoolId, facePhoto });
 
     if (!log) {

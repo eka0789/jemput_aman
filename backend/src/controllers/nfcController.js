@@ -28,35 +28,11 @@ const dispatchPickupNotifications = async ({
   };
 };
 
-const skippedSimulationNotifications = () => ({
-  notification_sent: false,
-  notification_status: {
-    whatsapp: {
-      success: false,
-      status: 'SKIPPED',
-      message: 'Notifikasi tidak dikirim untuk mode simulasi'
-    },
-    push: {
-      success: false,
-      status: 'SKIPPED',
-      message: 'Notifikasi tidak dikirim untuk mode simulasi'
-    }
-  }
-});
-
 export const verifyNfcTap = async (req, res, next) => {
   try {
-    const { card_uid, student_id, simulation } = req.body;
+    const { card_uid, student_id } = req.body;
     const schoolId = req.schoolId;
     const teacherId = req.user?.id || 'usr-teacher-1';
-    const simulationMode = simulation === true;
-
-    if (req.user?.role === 'FOUNDATION' && !simulationMode) {
-      return res.status(403).json({
-        error: 'FOUNDATION_SIMULATION_ONLY',
-        message: 'Akun Yayasan hanya dapat menggunakan reader dalam mode simulasi'
-      });
-    }
 
     const normalizedCardUid = String(card_uid || '').trim().toUpperCase();
     if (!/^[0-9A-F]{2}(?::[0-9A-F]{2}){3,9}$/.test(normalizedCardUid)) {
@@ -70,8 +46,7 @@ export const verifyNfcTap = async (req, res, next) => {
       cardUid: normalizedCardUid,
       studentId: student_id,
       schoolId,
-      teacherId,
-      simulationMode
+      teacherId
     });
 
     if (result.status === 'VERIFIED') {
@@ -79,15 +54,13 @@ export const verifyNfcTap = async (req, res, next) => {
       const { student, pickup_person, parent, timestamp } = result.data;
       Object.assign(
         result.data,
-        simulationMode
-          ? skippedSimulationNotifications()
-          : await dispatchPickupNotifications({
-              schoolId,
-              studentName: student.full_name,
-              pickupPersonName: `${pickup_person.full_name} (${pickup_person.relationship})`,
-              parentPhone: parent?.phone_number,
-              timestamp
-            })
+        await dispatchPickupNotifications({
+          schoolId,
+          studentName: student.full_name,
+          pickupPersonName: `${pickup_person.full_name} (${pickup_person.relationship})`,
+          parentPhone: parent?.phone_number,
+          timestamp
+        })
       );
 
       return res.status(200).json(result);
@@ -122,8 +95,7 @@ export const attachVerificationPhoto = async (req, res, next) => {
     const data = await nfcService.attachVerificationPhoto({
       pickupLogId: pickup_log_id,
       schoolId: req.schoolId,
-      facePhoto: face_photo,
-      simulationOnly: req.user?.role === 'FOUNDATION'
+      facePhoto: face_photo
     });
 
     if (!data) {
@@ -137,23 +109,18 @@ export const attachVerificationPhoto = async (req, res, next) => {
     const parent = student?.parent_id
       ? await models.users.findById(student.parent_id, req.schoolId)
       : null;
-    const isSimulation = data.verification_method === 'NFC_SIMULATION';
-    const notification = isSimulation
-      ? skippedSimulationNotifications()
-      : await dispatchPickupNotifications({
-          schoolId: req.schoolId,
-          studentName: data.student_name,
-          pickupPersonName: data.pickup_person_name,
-          parentPhone: parent?.phone_number,
-          timestamp: data.timestamp
-        });
+    const notification = await dispatchPickupNotifications({
+      schoolId: req.schoolId,
+      studentName: data.student_name,
+      pickupPersonName: data.pickup_person_name,
+      parentPhone: parent?.phone_number,
+      timestamp: data.timestamp
+    });
 
     return res.status(200).json({
       success: true,
       status: 'VERIFIED',
-      message: isSimulation
-        ? 'Simulasi berhasil. Foto wajah tersimpan tanpa mengirim notifikasi.'
-        : 'Foto wajah tersimpan pada data verifikasi penjemputan',
+      message: 'Foto wajah tersimpan pada data verifikasi penjemputan',
       data: { ...data, ...notification }
     });
   } catch (err) {
