@@ -519,6 +519,161 @@ h1, h2, h3, h4 {
   font-weight: 500;
 }
 
+.student-registration-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.student-registration-grid label,
+.emergency-otp-form label {
+  display: grid;
+  gap: 0.35rem;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-align: left;
+}
+
+.student-registration-grid input,
+.emergency-otp-form select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.65rem 0.75rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+}
+
+.student-registration-grid input:focus,
+.emergency-otp-form select:focus {
+  border-color: #14b8a6;
+  outline: 3px solid rgba(20, 184, 166, 0.16);
+}
+
+.student-registration-grid__wide {
+  grid-column: span 3;
+}
+
+.student-registration-grid small {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.empty-data-panel {
+  padding: 1rem;
+  border: 1px dashed #94a3b8;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.emergency-otp-form {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #fcd34d;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.emergency-otp-form p {
+  margin: 0;
+  color: #78350f;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.emergency-otp-form__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.report-retention-alert {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.1rem;
+  border: 1.5px solid #99f6e4;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f0fdfa, #ffffff);
+  color: #134e4a;
+}
+
+.report-retention-alert.is-due {
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, #fffbeb, #fff7ed);
+  color: #78350f;
+  box-shadow: 0 10px 30px rgba(245, 158, 11, 0.12);
+}
+
+.report-retention-alert__icon {
+  font-size: 2rem;
+}
+
+.report-retention-alert__content {
+  min-width: 0;
+}
+
+.report-retention-alert__content strong {
+  display: block;
+  margin-bottom: 0.2rem;
+  font-size: 0.95rem;
+}
+
+.report-retention-alert__content p {
+  margin: 0;
+  color: inherit;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.report-retention-alert__content small {
+  display: block;
+  margin-top: 0.35rem;
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+.report-retention-alert__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.report-retention-alert__actions .btn {
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .student-registration-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .student-registration-grid__wide {
+    grid-column: auto;
+  }
+
+  .report-retention-alert {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .report-retention-alert__actions {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 @media (max-width: 620px) {
   .profile-photo-item {
     grid-template-columns: 58px minmax(0, 1fr);

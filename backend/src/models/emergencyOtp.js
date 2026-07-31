@@ -65,5 +65,18 @@ export const emergencyOtpModel = {
       await query.select().maybeSingle(),
       'menyetujui OTP'
     );
-  }
+  },
+  reject: async (id, schoolId) => (
+    unwrapSupabase(
+      await client()
+        .from('emergency_otps')
+        .update({ status: 'REJECTED' })
+        .eq('id', id)
+        .eq('school_id', schoolId)
+        .eq('status', 'PENDING')
+        .select()
+        .maybeSingle(),
+      'membatalkan OTP yang gagal dikirim'
+    )
+  )
 };

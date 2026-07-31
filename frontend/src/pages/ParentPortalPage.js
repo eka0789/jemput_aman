@@ -3,6 +3,7 @@ import { escapeHtml as h } from '../utils/html.js';
 export function renderParentPortalPage(state) {
   const pendingOtps = state.pendingOtps || [];
   const logs = state.pickupLogs || [];
+  const students = state.students || [];
 
   return `
     <div class="container">
@@ -14,25 +15,19 @@ export function renderParentPortalPage(state) {
           <div class="edu-card" style="background: white; margin-bottom: 1.5rem;">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem;">
               <h3 class="text-heading" style="margin: 0; font-size: 1.2rem;">👨‍👩‍👧 Profile Anak Saya</h3>
-              <span class="badge badge-sky" style="font-size: 0.75rem;">2 Murid Terdaftar</span>
+              <span class="badge badge-sky" style="font-size: 0.75rem;">${students.length} Murid Terdaftar</span>
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 0.85rem;">
-              <div style="background: linear-gradient(135deg, #f0fdfa, #e6f4f1); border: 1.5px solid #99f6e4; border-radius: 16px; padding: 1rem; display: flex; align-items: center; gap: 1rem;">
-                <img src="https://images.unsplash.com/photo-1544717305-2782549b5136?w=150" style="width: 58px; height: 58px; border-radius: 50%; object-fit: cover; border: 3px solid #14b8a6; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" />
-                <div>
-                  <h4 style="margin: 0; font-size: 1.05rem; color: #064e3b;">Ananda Bintang</h4>
-                  <span class="badge badge-verified" style="font-size: 0.75rem; margin-top: 0.25rem;">TK-A1 • NIS-2025-014</span>
+              ${students.length ? students.map(student => `
+                <div style="background: linear-gradient(135deg, #f0fdfa, #e6f4f1); border: 1.5px solid #99f6e4; border-radius: 16px; padding: 1rem; display: flex; align-items: center; gap: 1rem;">
+                  <img src="${h(student.photo_url || '/avatar-placeholder.svg')}" alt="Foto ${h(student.name)}" style="width: 58px; height: 58px; border-radius: 50%; object-fit: cover; border: 3px solid #14b8a6; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" />
+                  <div>
+                    <h4 style="margin: 0; font-size: 1.05rem; color: #064e3b;">${h(student.name)}</h4>
+                    <span class="badge badge-verified" style="font-size: 0.75rem; margin-top: 0.25rem;">${h(student.class_name)}</span>
+                  </div>
                 </div>
-              </div>
-
-              <div style="background: linear-gradient(135deg, #fffbeb, #fef3c7); border: 1.5px solid #fde68a; border-radius: 16px; padding: 1rem; display: flex; align-items: center; gap: 1rem;">
-                <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150" style="width: 58px; height: 58px; border-radius: 50%; object-fit: cover; border: 3px solid #f59e0b; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" />
-                <div>
-                  <h4 style="margin: 0; font-size: 1.05rem; color: #78350f;">Siti Rahma</h4>
-                  <span class="badge badge-amber" style="font-size: 0.75rem; margin-top: 0.25rem;">TK-B2 • NIS-2024-089</span>
-                </div>
-              </div>
+              `).join('') : '<p style="color: #64748b;">Belum ada siswa yang terhubung dengan akun ini.</p>'}
             </div>
           </div>
 

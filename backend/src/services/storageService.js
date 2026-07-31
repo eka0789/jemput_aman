@@ -55,6 +55,31 @@ const decodePhoto = (dataUrl) => {
 };
 
 export const storageService = {
+  uploadProfilePhoto: async ({ schoolId, entityType, entityId, dataUrl }) => {
+    if (!['student', 'pickup-person'].includes(entityType)) {
+      const error = new Error('Jenis pemilik foto profil tidak valid');
+      error.statusCode = 400;
+      throw error;
+    }
+    const { buffer, contentType, extension } = decodePhoto(dataUrl);
+    const path = [
+      safePathSegment(schoolId),
+      'profiles',
+      entityType,
+      safePathSegment(entityId),
+      `${Date.now()}-${randomUUID()}.${extension}`
+    ].join('/');
+    const { error } = await assertSupabaseConfigured()
+      .storage.from(env.SUPABASE_STORAGE_BUCKET)
+      .upload(path, buffer, { contentType, cacheControl: '3600', upsert: false });
+    if (error) {
+      const wrappedError = new Error(`Supabase mengunggah foto profil gagal: ${error.message}`);
+      wrappedError.statusCode = 503;
+      throw wrappedError;
+    }
+    return { path };
+  },
+
   uploadVerificationPhoto: async ({ schoolId, pickupLogId, dataUrl }) => {
     const { buffer, contentType, extension } = decodePhoto(dataUrl);
     const path = [
@@ -84,6 +109,7 @@ export const storageService = {
 
   getSignedUrl: async (path, expiresIn = 3600) => {
     if (!path) return null;
+    if (String(path).startsWith('/')) return path;
     const storagePath = normalizeStoragePath(path);
     if (/^(https?:|data:)/i.test(storagePath)) return storagePath;
     const { data, error } = await assertSupabaseConfigured()
@@ -98,15 +124,20 @@ export const storageService = {
     return data.signedUrl;
   },
 
-  remove: async (path) => {
-    if (!path) return;
+  removeMany: async (paths) => {
+    const validPaths = paths.filter(Boolean);
+    if (!validPaths.length) return;
     const { error } = await assertSupabaseConfigured()
       .storage
       .from(env.SUPABASE_STORAGE_BUCKET)
-      .remove([path]);
+      .remove(validPaths);
 
     if (error) {
       throw new Error(`Supabase menghapus foto verifikasi gagal: ${error.message}`);
     }
+  },
+  remove: async (path) => {
+    if (!path) return;
+    return storageService.removeMany([path]);
   }
 };

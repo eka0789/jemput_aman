@@ -1,26 +1,35 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "services": {
+  "experimentalServices": {
     "frontend": {
-      "root": "frontend/"
+      "entrypoint": "frontend",
+      "framework": "vite",
+      "routePrefix": "/"
     },
     "backend": {
-      "root": "backend/",
-      "entrypoint": "src/app.js"
+      "entrypoint": "backend/src/app.js",
+      "framework": "express",
+      "routePrefix": "/api",
+      "maxDuration": 60
     }
   },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": {
-        "service": "backend"
-      }
-    },
+  "headers": [
     {
       "source": "/(.*)",
-      "destination": {
-        "service": "frontend"
-      }
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "no-referrer" },
+        { "key": "Permissions-Policy", "value": "camera=(self), geolocation=(), microphone=()" },
+        { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https:" }
+      ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/audit-retention",
+      "schedule": "0 17 * * *"
     }
   ]
 }

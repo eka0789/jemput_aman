@@ -2,16 +2,9 @@ import { escapeHtml as h } from '../utils/html.js';
 
 export function renderDataManagementPage(state) {
   const cards = state.cards || [];
-  const students = state.students || [
-    { id: '1111', name: 'Ananda Bintang', class_name: 'TK-A1', parent_name: 'Ibu Dewi Kurnia', phone: '081234567890' },
-    { id: '1112', name: 'Siti Rahma', class_name: 'TK-B2', parent_name: 'Ibu Dewi Kurnia', phone: '081234567890' }
-  ];
+  const students = state.students || [];
   const pickupPersons = state.pickupPersons || [];
-  const staff = state.staff || [
-    { id: 'usr-teacher-1', name: 'Pak Ahmad, S.Pd', role: 'Guru Piket Gerbang', phone: '081122334456' },
-    { id: 'usr-admin-1', name: 'Ibu Ratna, S.Pd', role: 'Admin Sekolah', phone: '081122334455' },
-    { id: 'usr-foundation-1', name: 'Drs. H. Bambang', role: 'Pengurus Yayasan', phone: '081999888777' }
-  ];
+  const staff = state.staff || [];
 
   const subTab = state.dataSubTab || 'nfc_bind'; // nfc_bind, students, staff
 
@@ -140,9 +133,9 @@ export function renderDataManagementPage(state) {
 
         <!-- Table of Existing Active Cards -->
         <div class="edu-card" style="background: white;">
-          <h4 style="color: #0f766e; margin-bottom: 1rem;">🎴 Daftar Kartu NFC Terikat Aktif</h4>
+          <h4 style="color: #0f766e; margin-bottom: 1rem;">🎴 Daftar Kartu NFC Realtime</h4>
           <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-            ${cards.map(c => `
+            ${cards.length ? cards.map(c => `
               <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1.5px solid ${c.status === 'ACTIVE' ? '#e2e8f0' : '#fca5a5'}; border-radius: 12px; background: ${c.status === 'ACTIVE' ? '#ffffff' : '#fef2f2'};">
                 <div>
                   <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
@@ -156,7 +149,11 @@ export function renderDataManagementPage(state) {
                   ${c.status === 'ACTIVE' ? '🚫 Laporkan Hilang' : '✅ Aktifkan Lagi'}
                 </button>
               </div>
-            `).join('')}
+            `).join('') : `
+              <div class="empty-data-panel">
+                Belum ada kartu NFC pada database sekolah. Scan kartu pertama untuk mulai registrasi.
+              </div>
+            `}
           </div>
         </div>
       ` : ''}
@@ -178,10 +175,14 @@ export function renderDataManagementPage(state) {
           ${state.showAddStudent ? `
             <div style="background: #f0fdfa; border: 1.5px solid #99f6e4; border-radius: 14px; padding: 1.25rem; margin-bottom: 1.5rem;">
               <h5 style="color: #0f766e; margin-bottom: 0.75rem;">Form Pendaftaran Murid Baru:</h5>
-              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
-                <input type="text" id="new_std_name" placeholder="Nama Lengkap Anak" style="padding: 0.6rem; border-radius: 8px; border: 1px solid #cbd5e1;" />
-                <input type="text" id="new_std_class" placeholder="Kelas (contoh: TK-A1)" style="padding: 0.6rem; border-radius: 8px; border: 1px solid #cbd5e1;" />
-                <input type="text" id="new_std_parent" placeholder="Nama Orang Tua / Wali" style="padding: 0.6rem; border-radius: 8px; border: 1px solid #cbd5e1;" />
+              <div class="student-registration-grid">
+                <label>Nama lengkap anak<input type="text" id="new_std_name" maxlength="120" required /></label>
+                <label>Kelas<input type="text" id="new_std_class" placeholder="Contoh: TK-A1" maxlength="40" required /></label>
+                <label>Nomor induk siswa<input type="text" id="new_std_number" placeholder="Contoh: NIS-2026-001" maxlength="60" required /></label>
+                <label>Nama orang tua / wali<input type="text" id="new_std_parent" maxlength="120" required /></label>
+                <label>Nomor WhatsApp orang tua<input type="tel" id="new_std_parent_phone" placeholder="081234567890" inputmode="tel" maxlength="16" required /></label>
+                <label>Email portal orang tua<input type="email" id="new_std_parent_email" placeholder="orangtua@email.com" maxlength="180" required /></label>
+                <label class="student-registration-grid__wide">Password awal portal orang tua<input type="password" id="new_std_parent_password" minlength="8" autocomplete="new-password" required /><small>Minimal 8 karakter. Jika email sudah terdaftar, akun lama akan digunakan.</small></label>
               </div>
               <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
                 <button class="btn btn-secondary" onclick="window.closeAddStudentForm()" style="font-size: 0.8rem;">Batal</button>
@@ -252,14 +253,14 @@ export function renderDataManagementPage(state) {
                 </tr>
               </thead>
               <tbody>
-                ${staff.map(st => `
+                ${staff.length ? staff.map(st => `
                   <tr style="border-bottom: 1px solid #f1f5f9;">
                     <td style="padding: 0.75rem 1rem; font-weight: bold; color: #0f172a;">${st.name}</td>
                     <td style="padding: 0.75rem 1rem;">${st.role}</td>
                     <td style="padding: 0.75rem 1rem; font-family: monospace;">${st.phone}</td>
                     <td style="padding: 0.75rem 1rem;"><span class="badge badge-verified">Aktif</span></td>
                   </tr>
-                `).join('')}
+                `).join('') : `<tr><td colspan="4" style="padding: 1rem; color: #64748b;">Belum ada data petugas aktif untuk sekolah ini.</td></tr>`}
               </tbody>
             </table>
           </div>

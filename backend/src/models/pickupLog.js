@@ -25,16 +25,28 @@ export const pickupLogModel = {
       'menyimpan log penjemputan'
     );
   },
-  findBySchool: async (schoolId) => (
-    unwrapSupabase(
-      await client()
+  findBySchool: async (schoolId, { limit } = {}) => {
+    let query = client()
         .from('pickup_logs')
         .select('*')
         .eq('school_id', schoolId)
-        .order('timestamp', { ascending: false }),
+        .order('timestamp', { ascending: false });
+    if (limit) query = query.limit(limit);
+    return unwrapSupabase(
+      await query,
       'membaca log penjemputan'
-    )
-  ),
+    );
+  },
+  countVerifiedSince: async (schoolId, sinceIso) => {
+    const { count, error } = await client()
+      .from('pickup_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('school_id', schoolId)
+      .eq('status', 'VERIFIED')
+      .gte('timestamp', sinceIso);
+    if (error) return unwrapSupabase({ data: null, error }, 'menghitung kepulangan hari ini');
+    return count || 0;
+  },
   findById: async (logId, schoolId) => (
     unwrapSupabase(
       await client()
@@ -64,5 +76,47 @@ export const pickupLogModel = {
       await client().from('pickup_logs').select('*').order('timestamp', { ascending: false }),
       'membaca seluruh log penjemputan'
     )
-  )
+  ),
+  findOldestBySchool: async (schoolId) => (
+    unwrapSupabase(
+      await client()
+        .from('pickup_logs')
+        .select('timestamp')
+        .eq('school_id', schoolId)
+        .order('timestamp', { ascending: true })
+        .limit(1)
+        .maybeSingle(),
+      'membaca log penjemputan terlama'
+    )
+  ),
+  findExpired: async (cutoffIso, limit = 500) => (
+    unwrapSupabase(
+      await client()
+        .from('pickup_logs')
+        .select('id, school_id, verification_photo, timestamp')
+        .lt('timestamp', cutoffIso)
+        .order('timestamp', { ascending: true })
+        .limit(limit),
+      'membaca log yang melewati masa retensi'
+    )
+  ),
+  deleteByIds: async (ids) => {
+    if (!ids.length) return [];
+    return unwrapSupabase(
+      await client()
+        .from('pickup_logs')
+        .delete()
+        .in('id', ids)
+        .select('id'),
+      'menghapus log yang melewati masa retensi'
+    );
+  },
+  countBySchool: async (schoolId) => {
+    const { count, error } = await client()
+      .from('pickup_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('school_id', schoolId);
+    if (error) return unwrapSupabase({ data: null, error }, 'menghitung log penjemputan');
+    return count || 0;
+  }
 };

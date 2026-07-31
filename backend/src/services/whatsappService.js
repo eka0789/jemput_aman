@@ -14,6 +14,14 @@ const buildOtpMessage = ({ studentName, pickupPersonName, otpCode, expiresInMinu
   + `Kode berlaku ${expiresInMinutes} menit. Jangan berikan kode jika Anda tidak mengenali penjemput.`
 );
 
+export const normalizeWhatsappPhone = value => {
+  const compact = String(value || '').replace(/[^\d+]/g, '');
+  if (/^08\d{8,12}$/.test(compact)) return `62${compact.slice(1)}`;
+  if (/^\+628\d{8,12}$/.test(compact)) return compact.slice(1);
+  if (/^628\d{8,12}$/.test(compact)) return compact;
+  return '';
+};
+
 const sendMessage = async (recipientPhone, message) => {
   if (!env.WHATSAPP_API_TOKEN) {
     return {
@@ -22,11 +30,12 @@ const sendMessage = async (recipientPhone, message) => {
       message: 'Token gateway WhatsApp belum dikonfigurasi'
     };
   }
-  if (!recipientPhone) {
+  const normalizedRecipient = normalizeWhatsappPhone(recipientPhone);
+  if (!normalizedRecipient) {
     return {
       success: false,
       status: 'NO_RECIPIENT',
-      message: 'Nomor WhatsApp orang tua tidak tersedia'
+      message: 'Nomor WhatsApp orang tua tidak tersedia atau tidak valid'
     };
   }
 
@@ -40,9 +49,9 @@ const sendMessage = async (recipientPhone, message) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        target: String(recipientPhone),
+        target: normalizedRecipient,
         message,
-        countryCode: '62'
+        countryCode: '0'
       }),
       signal: controller.signal
     });

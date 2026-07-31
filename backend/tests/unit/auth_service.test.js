@@ -83,6 +83,46 @@ describe('Admin authentication service', () => {
     });
   });
 
+  it('limits a foundation account to schools in the same foundation', async () => {
+    env.FOUNDATION_PASSWORD_HASH = createCredentialHash('Foundation!234');
+    vi.spyOn(models.users, 'findByEmail').mockResolvedValue({
+      id: 'foundation-1', school_id: 'school-a', role: 'FOUNDATION',
+      full_name: 'Pengurus', email: 'foundation@example.test'
+    });
+    vi.spyOn(models.schools, 'findById').mockResolvedValue({
+      id: 'school-a', foundation_id: 'foundation-a'
+    });
+    vi.spyOn(models.schools, 'findByFoundation').mockResolvedValue([
+      { id: 'school-a' }, { id: 'school-b' }
+    ]);
+
+    const result = await authService.login({
+      email: 'foundation@example.test', password: 'Foundation!234'
+    });
+    expect(result.user.school_ids).toEqual(['school-a', 'school-b']);
+    expect(models.schools.findByFoundation).toHaveBeenCalledWith('foundation-a');
+  });
+
+  it('allows a parent to login with their own stored credential hash', async () => {
+    env.JWT_SECRET = 'test-secret-that-is-long-enough';
+    vi.spyOn(models.users, 'findByEmail').mockResolvedValue({
+      id: 'usr-parent-2',
+      school_id: 'school-a',
+      role: 'PARENT',
+      full_name: 'Orang Tua',
+      email: 'parent@example.test',
+      password_hash: createCredentialHash('Parent!234')
+    });
+
+    const result = await authService.login({
+      email: 'parent@example.test',
+      password: 'Parent!234'
+    });
+
+    expect(result.user.role).toBe('PARENT');
+    expect(result.user.school_id).toBe('school-a');
+  });
+
   it('validates the kiosk PIN against its backend hash', () => {
     env.KIOSK_PIN_HASH = createCredentialHash('864275');
 

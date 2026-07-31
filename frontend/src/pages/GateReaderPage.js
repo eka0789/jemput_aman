@@ -50,6 +50,33 @@ export function renderGateReaderPage(state) {
               <button class="btn btn-amber" onclick="window.openEmergencyModal()" style="width: 100%; font-size: 0.88rem;">
                 Gunakan Mode Darurat OTP (Approval Orang Tua)
               </button>
+              ${state.showEmergencyOtp ? `
+                <form class="emergency-otp-form" onsubmit="window.submitEmergencyOtp(event)">
+                  <label>
+                    Siswa
+                    <select id="otp_student_id" required>
+                      <option value="">Pilih siswa</option>
+                      ${(state.students || []).map(student => `
+                        <option value="${h(student.id)}">${h(student.name)} (${h(student.class_name)})</option>
+                      `).join('')}
+                    </select>
+                  </label>
+                  <label>
+                    Penjemput
+                    <select id="otp_pickup_person_id" required>
+                      <option value="">Pilih penjemput terdaftar</option>
+                      ${(state.pickupPersons || []).map(person => `
+                        <option value="${h(person.id)}">${h(person.name)} (${h(person.relationship)})</option>
+                      `).join('')}
+                    </select>
+                  </label>
+                  <p>Kode hanya dikirim ke nomor WhatsApp orang tua yang terhubung dengan siswa.</p>
+                  <div class="emergency-otp-form__actions">
+                    <button type="button" class="btn btn-secondary" onclick="window.closeEmergencyModal()">Batal</button>
+                    <button type="submit" class="btn btn-amber">Kirim OTP</button>
+                  </div>
+                </form>
+              ` : ''}
             </div>
           </div>
         </div>

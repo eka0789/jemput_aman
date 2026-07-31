@@ -4,6 +4,12 @@ export function renderAdminDashboardPage(state) {
   const logs = state.pickupLogs || [];
   const totalVerified = logs.filter(l => l.status === 'VERIFIED').length;
   const totalBlocked = logs.filter(l => l.status === 'BLOCKED').length;
+  const activeCards = (state.cards || []).filter(card => card.status === 'ACTIVE').length;
+  const lostCards = (state.cards || []).filter(card => card.status === 'LOST').length;
+  const retention = state.reportRetention;
+  const formatDate = value => value
+    ? new Date(value).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '-';
 
   return `
     <div class="container">
@@ -50,12 +56,31 @@ export function renderAdminDashboardPage(state) {
             <span style="font-size: 1.5rem;">🎴</span>
           </div>
           <div style="font-family: 'Fredoka', sans-serif; font-size: 2.2rem; font-weight: bold; color: #d97706; margin-top: 0.35rem;">
-            2 Kartu
+            ${activeCards} Kartu
           </div>
-          <div style="font-size: 0.75rem; color: #b45309; margin-top: 0.25rem; font-weight: bold;">1 Kartu Dilaporkan Hilang</div>
+          <div style="font-size: 0.75rem; color: #b45309; margin-top: 0.25rem; font-weight: bold;">${lostCards} Kartu Dilaporkan Hilang</div>
         </div>
 
       </div>
+
+      ${retention ? `
+        <section class="report-retention-alert ${retention.export_due ? 'is-due' : ''}" role="${retention.export_due ? 'alert' : 'status'}" aria-live="polite">
+          <div class="report-retention-alert__icon" aria-hidden="true">${retention.export_due ? '⚠️' : '🗄️'}</div>
+          <div class="report-retention-alert__content">
+            <strong>${retention.export_due ? 'Waktunya mencadangkan laporan bulanan' : 'Retensi audit aktif'}</strong>
+            <p>
+              ${retention.export_due
+                ? `Sudah 30 hari sejak periode laporan dimulai atau export terakhir. Export Excel/PDF sekarang sebelum data berumur 60 hari dihapus otomatis.`
+                : `Sistem menyimpan ${retention.total_logs} log selama maksimal 60 hari. Pengingat export berikutnya: ${h(formatDate(retention.next_export_due_at))}.`}
+            </p>
+            ${retention.next_deletion_at ? `<small>Penghapusan otomatis terdekat: ${h(formatDate(retention.next_deletion_at))}</small>` : ''}
+          </div>
+          <div class="report-retention-alert__actions">
+            <button class="btn btn-primary" onclick="window.exportExcelReport()">📥 Export Excel</button>
+            <button class="btn btn-amber" onclick="window.exportPdfReport()">📄 Export PDF</button>
+          </div>
+        </section>
+      ` : ''}
 
       <!-- Action Toolbar & Audit Logs Table -->
       <div class="edu-card" style="background: white;">
@@ -92,7 +117,7 @@ export function renderAdminDashboardPage(state) {
               </tr>
             </thead>
             <tbody>
-              ${logs.map(log => `
+              ${logs.length ? logs.map(log => `
                 <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" onmouseover="this.style.background='#f0fdfa'" onmouseout="this.style.background='white'">
                   <td style="padding: 0.85rem 1.15rem; font-weight: 800; color: #0f766e;">
                     ${h(new Date(log.timestamp).toLocaleTimeString('id-ID'))} WIB
@@ -107,7 +132,7 @@ export function renderAdminDashboardPage(state) {
                   </td>
                   <td style="padding: 0.85rem 1.15rem; color: #64748b; font-size: 0.82rem;">${h(log.notes)}</td>
                 </tr>
-              `).join('')}
+              `).join('') : '<tr><td colspan="6" style="padding: 1.5rem; text-align: center; color: #64748b;">Belum ada audit trail kepulangan.</td></tr>'}
             </tbody>
           </table>
         </div>

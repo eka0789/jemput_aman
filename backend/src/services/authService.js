@@ -74,14 +74,19 @@ export const authService = {
     }
 
     const user = await models.users.findByEmail(normalizedEmail);
-    const passwordHash = passwordHashForRole(user?.role);
+    const passwordHash = user?.password_hash || passwordHashForRole(user?.role);
     if (!user || !passwordHash || !verifyCredential(password, passwordHash)) {
       throw unauthorized();
     }
 
-    const schoolIds = user.role === 'FOUNDATION'
-      ? (await models.schools.findAll()).map(school => school.id)
-      : [user.school_id];
+    let schoolIds = [user.school_id];
+    if (user.role === 'FOUNDATION') {
+      const primarySchool = await models.schools.findById(user.school_id);
+      if (primarySchool?.foundation_id) {
+        schoolIds = (await models.schools.findByFoundation(primarySchool.foundation_id))
+          .map(school => school.id);
+      }
+    }
     const token = jwt.sign({
       id: user.id,
       school_id: user.school_id,

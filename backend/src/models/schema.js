@@ -11,9 +11,8 @@ export const models = {
           .from('app_users')
           .select('*')
           .ilike('email', email.trim())
-          .in('role', ['ADMIN', 'FOUNDATION'])
           .maybeSingle(),
-        'membaca akun pengelola'
+        'membaca akun pengguna'
       )
     ),
     findById: async (id, schoolId) => {
@@ -32,6 +31,50 @@ export const models = {
           .maybeSingle(),
         'memperbarui nomor pengguna'
       )
+    ),
+    updateParentProfile: async (id, schoolId, data) => (
+      unwrapSupabase(
+        await client()
+          .from('app_users')
+          .update(data)
+          .eq('id', id)
+          .eq('school_id', schoolId)
+          .eq('role', 'PARENT')
+          .select()
+          .maybeSingle(),
+        'memperbarui akun orang tua'
+      )
+    ),
+    create: async (data) => (
+      unwrapSupabase(
+        await client()
+          .from('app_users')
+          .insert({ id: data.id || createId('usr'), ...data })
+          .select()
+          .single(),
+        'menambah pengguna'
+      )
+    ),
+    remove: async (id, schoolId) => (
+      unwrapSupabase(
+        await client()
+          .from('app_users')
+          .delete()
+          .eq('id', id)
+          .eq('school_id', schoolId),
+        'menghapus pengguna'
+      )
+    ),
+    findStaffBySchool: async (schoolId) => (
+      unwrapSupabase(
+        await client()
+          .from('app_users')
+          .select('id, school_id, full_name, role, phone_number')
+          .eq('school_id', schoolId)
+          .in('role', ['ADMIN', 'TEACHER', 'FOUNDATION'])
+          .order('full_name'),
+        'membaca petugas sekolah'
+      )
     )
   },
   schools: {
@@ -43,9 +86,22 @@ export const models = {
     ),
     findAll: async () => (
       unwrapSupabase(await client().from('schools').select('*').order('name'), 'membaca sekolah')
+    ),
+    findByFoundation: async (foundationId) => (
+      unwrapSupabase(
+        await client().from('schools').select('*').eq('foundation_id', foundationId).order('name'),
+        'membaca sekolah dalam yayasan'
+      )
     )
   },
   students: {
+    countBySchool: async (schoolId) => {
+      const { count, error } = await client()
+        .from('students').select('id', { count: 'exact', head: true })
+        .eq('school_id', schoolId).eq('status', 'ACTIVE');
+      if (error) return unwrapSupabase({ data: null, error }, 'menghitung siswa');
+      return count || 0;
+    },
     findBySchool: async (schoolId) => (
       unwrapSupabase(
         await client().from('students').select('*').eq('school_id', schoolId).order('full_name'),
@@ -116,6 +172,16 @@ export const models = {
     )
   },
   nfcCards: {
+    findBySchool: async (schoolId) => (
+      unwrapSupabase(
+        await client()
+          .from('nfc_cards')
+          .select('*')
+          .eq('school_id', schoolId)
+          .order('issued_at', { ascending: false }),
+        'membaca daftar kartu NFC'
+      )
+    ),
     findByUid: async (uid, schoolId) => (
       unwrapSupabase(
         await client()

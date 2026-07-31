@@ -54,10 +54,11 @@ const readJsonResponse = async (response, fallbackMessage) => {
 const state = {
   activeTab: 'reader', // reader, parent, admin, data, foundation
   dataSubTab: 'nfc_bind',
-  scheduleStudentId: '1111',
+  scheduleStudentId: '',
   weeklySchedules: [],
   isKioskLocked: true, // DEFAULT TRUE FOR GATE TABLET SECURITY!
   showAddStudent: false,
+  showEmergencyOtp: false,
   authUser: getTokenPayload(),
   lastVerification: null,
   cameraError: '',
@@ -66,36 +67,14 @@ const state = {
   cameraUploading: false,
   showBindModal: false,
   newCardUid: '',
-  pickupLogs: [
-    {
-      id: 'log-001',
-      student_name: 'Ananda Bintang',
-      pickup_person_name: 'Budi Santoso (Ayah Kandung)',
-      verification_method: 'NFC_TAP',
-      status: 'VERIFIED',
-      timestamp: new Date().toISOString(),
-      notes: 'Penjemputan rutin terverifikasi sah'
-    }
-  ],
+  pickupLogs: [],
   pendingOtps: [],
-  cards: [
-    { uid: '04:A2:8B:12:FE:67:80', pickup_person_id: '2222', holder: 'Budi Santoso (Ayah Kandung)', status: 'ACTIVE', student: 'Ananda Bintang (TK-A1)' },
-    { uid: '04:B3:9C:23:FF:78:91', pickup_person_id: '2223', holder: 'Pak Joko (Supir Keluarga)', status: 'ACTIVE', student: 'Ananda Bintang (TK-A1)' },
-    { uid: '99:99:99:99:99:99:99', holder: 'Kartu Lama (Telah Dilaporkan Hilang)', status: 'LOST', student: 'Siti Rahma (TK-B2)' }
-  ],
-  students: [
-    { id: '1111', parent_id: 'usr-parent-1', name: 'Ananda Bintang', class_name: 'TK-A1', parent_name: 'Ibu Dewi Kurnia', phone: '081234567890', photo_url: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=150' },
-    { id: '1112', parent_id: 'usr-parent-1', name: 'Siti Rahma', class_name: 'TK-B2', parent_name: 'Ibu Dewi Kurnia', phone: '081234567890', photo_url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150' }
-  ],
-  pickupPersons: [
-    { id: '2222', name: 'Budi Santoso', relationship: 'Ayah Kandung', photo_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150' },
-    { id: '2223', name: 'Pak Joko', relationship: 'Supir Keluarga', photo_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150' }
-  ],
-  staff: [
-    { id: 'usr-teacher-1', name: 'Pak Ahmad, S.Pd', role: 'Guru Piket Gerbang', phone: '081122334456' },
-    { id: 'usr-admin-1', name: 'Ibu Ratna, S.Pd', role: 'Admin Sekolah', phone: '081122334455' },
-    { id: 'usr-foundation-1', name: 'Drs. H. Bambang', role: 'Pengurus Yayasan', phone: '081999888777' }
-  ]
+  reportRetention: null,
+  cards: [],
+  students: [],
+  pickupPersons: [],
+  staff: [],
+  foundationBranches: []
 };
 
 function render() {
@@ -137,6 +116,9 @@ function render() {
       render();
       if (state.activeTab === 'schedule') loadStudentSchedule();
       if (state.activeTab === 'parent') loadPendingOtps();
+      if (state.activeTab === 'admin') loadAdminDashboard();
+      if (state.activeTab === 'foundation') loadFoundationOverview();
+      if (state.activeTab === 'data') loadStaff();
     });
   });
 }
@@ -161,6 +143,11 @@ const loadPendingOtps = async () => {
 };
 
 const loadStudentSchedule = async () => {
+  if (!state.scheduleStudentId) {
+    state.weeklySchedules = [];
+    render();
+    return;
+  }
   try {
     const response = await apiFetch(`/schedules/${state.scheduleStudentId}`, {}, 'PARENT');
     const result = await readJsonResponse(response, 'Jadwal siswa gagal dimuat.');
@@ -177,6 +164,10 @@ window.changeScheduleStudent = async (studentId) => {
 };
 
 window.saveWeeklySchedule = async () => {
+  if (!state.scheduleStudentId) {
+    alert('Belum ada siswa yang dapat dijadwalkan.');
+    return;
+  }
   const schedules = [...document.querySelectorAll('[data-schedule-day]')]
     .filter(select => select.value)
     .map(select => ({
@@ -306,10 +297,14 @@ const createSecurityDialog = ({ title, description, fields, submitLabel }) => {
   return dialog;
 };
 
-const requestAdminLogin = () => new Promise((resolve) => {
+const requestAdminLogin = ({
+  title = 'Login Admin / Yayasan',
+  description = 'Masuk dengan akun pengelola yang terdaftar sebelum membuka mode akses penuh.',
+  allowedRoles = ['ADMIN', 'FOUNDATION']
+} = {}) => new Promise((resolve) => {
   const dialog = createSecurityDialog({
-    title: 'Login Admin / Yayasan',
-    description: 'Masuk dengan akun pengelola yang terdaftar sebelum membuka mode akses penuh.',
+    title,
+    description,
     fields: [
       { name: 'email', label: 'Email', type: 'email', autocomplete: 'username' },
       { name: 'password', label: 'Password', type: 'password', autocomplete: 'current-password' }
@@ -348,6 +343,9 @@ const requestAdminLogin = () => new Promise((resolve) => {
         })
       }, 'ADMIN');
       const result = await readJsonResponse(response, 'Login gagal.');
+      if (!allowedRoles.includes(result.data.user.role)) {
+        throw new Error('Akun tidak memiliki hak akses untuk portal ini.');
+      }
       localStorage.setItem('jemput_aman_access_token', result.data.access_token);
       state.authUser = result.data.user;
       finish(true);
@@ -363,6 +361,39 @@ const requestAdminLogin = () => new Promise((resolve) => {
   dialog.showModal();
   form.elements.email.focus();
 });
+
+window.loginParentPortal = async () => {
+  const loggedIn = await requestAdminLogin({
+    title: 'Login Portal Orang Tua',
+    description: 'Gunakan email dan password yang didaftarkan sekolah saat data siswa dibuat.',
+    allowedRoles: ['PARENT']
+  });
+  if (!loggedIn) return;
+  state.isKioskLocked = false;
+  state.activeTab = 'parent';
+  await hydrateProfileData();
+  await loadPendingOtps();
+};
+
+const loadReportRetentionStatus = async () => {
+  const response = await apiFetch('/reports/retention-status', {}, 'ADMIN');
+  const result = await readJsonResponse(response, 'Status retensi laporan gagal dimuat.');
+  state.reportRetention = result.data;
+};
+
+const loadAdminDashboard = async () => {
+  try {
+    const [logsResponse] = await Promise.all([
+      apiFetch('/reports/logs', {}, 'ADMIN'),
+      loadReportRetentionStatus()
+    ]);
+    const logsResult = await readJsonResponse(logsResponse, 'Audit trail gagal dimuat.');
+    state.pickupLogs = logsResult.data;
+    render();
+  } catch (error) {
+    console.warn('Admin report sync unavailable:', error);
+  }
+};
 
 const requestKioskPin = () => new Promise((resolve) => {
   const dialog = createSecurityDialog({
@@ -569,12 +600,16 @@ window.editParentWhatsapp = async (studentId) => {
 };
 
 window.submitNewStudent = async () => {
-  const name = document.getElementById('new_std_name')?.value;
-  const className = document.getElementById('new_std_class')?.value || 'TK-A1';
-  const parentName = document.getElementById('new_std_parent')?.value || 'Orang Tua';
+  const name = document.getElementById('new_std_name')?.value.trim();
+  const className = document.getElementById('new_std_class')?.value.trim();
+  const studentNumber = document.getElementById('new_std_number')?.value.trim();
+  const parentName = document.getElementById('new_std_parent')?.value.trim();
+  const parentPhone = document.getElementById('new_std_parent_phone')?.value.trim();
+  const parentEmail = document.getElementById('new_std_parent_email')?.value.trim();
+  const parentPassword = document.getElementById('new_std_parent_password')?.value || '';
 
-  if (!name) {
-    alert('Silakan masukkan nama murid baru!');
+  if (!name || !className || !studentNumber || !parentName || !parentPhone || !parentEmail || parentPassword.length < 8) {
+    alert('Lengkapi data siswa dan orang tua. Password portal minimal 8 karakter.');
     return;
   }
 
@@ -584,7 +619,17 @@ window.submitNewStudent = async () => {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ full_name: name, class_name: className, student_number: `NIS-${Date.now()}` })
+      body: JSON.stringify({
+        full_name: name,
+        class_name: className,
+        student_number: studentNumber,
+        parent: {
+          full_name: parentName,
+          phone_number: parentPhone,
+          email: parentEmail,
+          password: parentPassword
+        }
+      })
     }, 'ADMIN');
     const result = await readJsonResponse(response, 'Data siswa gagal disimpan.');
     const savedStudent = result.data;
@@ -593,8 +638,8 @@ window.submitNewStudent = async () => {
       parent_id: savedStudent.parent_id,
       name: savedStudent.full_name,
       class_name: savedStudent.class_name,
-      parent_name: parentName,
-      phone: '-',
+      parent_name: savedStudent.parent.full_name,
+      phone: savedStudent.parent.phone_number,
       photo_url: savedStudent.photo_url
     });
     state.showAddStudent = false;
@@ -935,22 +980,42 @@ window.startNfcReader = async () => {
   if (started) alert('Reader NFC aktif. Tempelkan kartu pada perangkat.');
 };
 
-window.openEmergencyModal = async () => {
+window.openEmergencyModal = () => {
+  state.showEmergencyOtp = true;
+  render();
+};
+
+window.closeEmergencyModal = () => {
+  state.showEmergencyOtp = false;
+  render();
+};
+
+window.submitEmergencyOtp = async event => {
+  event?.preventDefault();
+  const studentId = document.getElementById('otp_student_id')?.value;
+  const pickupPersonId = document.getElementById('otp_pickup_person_id')?.value;
+  if (!studentId || !pickupPersonId) {
+    alert('Pilih siswa dan penjemput terlebih dahulu.');
+    return;
+  }
+  const student = state.students.find(item => item.id === studentId);
+  const pickupPerson = state.pickupPersons.find(item => item.id === pickupPersonId);
   try {
     const response = await apiFetch('/pickup/request-otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ student_id: '1111', pickup_person_id: '2222' })
+      body: JSON.stringify({ student_id: studentId, pickup_person_id: pickupPersonId })
     }, 'TEACHER');
     const result = await readJsonResponse(response, 'Permintaan OTP gagal dibuat.');
     state.pendingOtps.unshift({
       ...result.data,
-      student_name: 'Ananda Bintang',
-      pickup_person_name: 'Budi Santoso (Lupa Kartu NFC)'
+      student_name: student?.name || 'Siswa',
+      pickup_person_name: `${pickupPerson?.name || 'Penjemput'} (${pickupPerson?.relationship || 'Terdaftar'})`
     });
     const debugCode = result.data.debug_otp_code
       ? `\nKode development: ${result.data.debug_otp_code}`
       : '';
+    state.showEmergencyOtp = false;
     alert(`${result.message}${debugCode}`);
     render();
   } catch (error) {
@@ -1002,6 +1067,8 @@ const downloadReport = async (format) => {
     anchor.download = `Laporan_Kepulangan.${format === 'excel' ? 'xlsx' : 'pdf'}`;
     anchor.click();
     URL.revokeObjectURL(url);
+    await loadReportRetentionStatus();
+    render();
   } catch (error) {
     alert(error.message || 'Laporan gagal diunduh.');
   }
@@ -1029,9 +1096,10 @@ window.toggleCardStatus = async (uid, status) => {
 
 const hydrateProfileData = async () => {
   try {
-    const [studentsResponse, peopleResponse] = await Promise.all([
+    const [studentsResponse, peopleResponse, cardsResponse] = await Promise.all([
       apiFetch('/students', {}, 'TEACHER'),
-      apiFetch('/pickup-persons', {}, 'TEACHER')
+      apiFetch('/pickup-persons', {}, 'TEACHER'),
+      apiFetch('/nfc/cards', {}, 'TEACHER')
     ]);
 
     if (studentsResponse.ok) {
@@ -1048,6 +1116,9 @@ const hydrateProfileData = async () => {
           photo_url: student.photo_url
         };
       });
+      if (!state.students.some(student => student.id === state.scheduleStudentId)) {
+        state.scheduleStudentId = state.students[0]?.id || '';
+      }
     }
 
     if (peopleResponse.ok) {
@@ -1059,9 +1130,51 @@ const hydrateProfileData = async () => {
         photo_url: person.photo_url
       }));
     }
+    if (cardsResponse.ok) {
+      const result = await cardsResponse.json();
+      state.cards = result.data.map(card => ({
+        uid: card.card_uid,
+        pickup_person_id: card.pickup_person_id,
+        holder: card.pickup_person
+          ? `${card.pickup_person.full_name} (${card.pickup_person.relationship})`
+          : 'Belum memiliki pemegang aktif',
+        status: card.status,
+        student: card.students.length
+          ? card.students.map(student => `${student.full_name} (${student.class_name})`).join(', ')
+          : 'Belum ditautkan ke siswa'
+      }));
+    }
     render();
   } catch (err) {
     console.warn('Profile data sync unavailable:', err);
+  }
+};
+
+const loadStaff = async () => {
+  if (!getAuthToken() && !import.meta.env.DEV) return;
+  try {
+    const response = await apiFetch('/staff', {}, 'ADMIN');
+    const result = await readJsonResponse(response, 'Data petugas gagal dimuat.');
+    state.staff = result.data.map(user => ({
+      id: user.id,
+      name: user.full_name,
+      role: ({ ADMIN: 'Admin Sekolah', TEACHER: 'Guru Piket', FOUNDATION: 'Pengurus Yayasan' })[user.role] || user.role,
+      phone: user.phone_number || '-'
+    }));
+    render();
+  } catch (error) {
+    console.warn('Staff sync unavailable:', error);
+  }
+};
+
+const loadFoundationOverview = async () => {
+  try {
+    const response = await apiFetch('/foundation/overview', {}, 'FOUNDATION');
+    const result = await readJsonResponse(response, 'Ringkasan yayasan gagal dimuat.');
+    state.foundationBranches = result.data;
+    render();
+  } catch (error) {
+    console.warn('Foundation overview unavailable:', error);
   }
 };
 
@@ -1071,6 +1184,11 @@ const hydrateAuthSession = async () => {
     const response = await apiFetch('/auth/session', {}, 'ADMIN');
     const result = await readJsonResponse(response, 'Sesi login tidak valid.');
     state.authUser = result.data.user;
+    if (state.authUser.role === 'PARENT') {
+      state.isKioskLocked = false;
+      state.activeTab = 'parent';
+      await loadPendingOtps();
+    }
   } catch {
     localStorage.removeItem('jemput_aman_access_token');
     state.authUser = null;

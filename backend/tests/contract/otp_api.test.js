@@ -3,6 +3,7 @@ import { models } from '../../src/models/schema.js';
 import { emergencyOtpModel } from '../../src/models/emergencyOtp.js';
 import { pickupLogModel } from '../../src/models/pickupLog.js';
 import { otpService } from '../../src/services/otpService.js';
+import { whatsappService } from '../../src/services/whatsappService.js';
 
 describe('emergency OTP security contract', () => {
   beforeEach(() => {
@@ -38,6 +39,27 @@ describe('emergency OTP security contract', () => {
 
     expect(result).toBeNull();
     expect(approve).not.toHaveBeenCalled();
+  });
+
+  it('rejects the stored OTP when WhatsApp delivery fails', async () => {
+    vi.spyOn(models.students, 'findById').mockResolvedValue({
+      id: 'student-1', parent_id: 'parent-1', full_name: 'Anak', status: 'ACTIVE'
+    });
+    vi.spyOn(models.pickupPersons, 'findById').mockResolvedValue({
+      id: 'person-1', full_name: 'Ayah', status: 'ACTIVE'
+    });
+    vi.spyOn(models.authorizations, 'findValidAuth').mockResolvedValue({ id: 'auth-1' });
+    vi.spyOn(models.users, 'findById').mockResolvedValue({ id: 'parent-1', phone_number: '081234567890' });
+    vi.spyOn(emergencyOtpModel, 'create').mockResolvedValue({ id: 'otp-1' });
+    const reject = vi.spyOn(emergencyOtpModel, 'reject').mockResolvedValue({ id: 'otp-1', status: 'REJECTED' });
+    vi.spyOn(whatsappService, 'sendOtpNotification').mockResolvedValue({
+      success: false, status: 'FAILED', message: 'Gateway unavailable'
+    });
+
+    await expect(otpService.requestOtp({
+      studentId: 'student-1', pickupPersonId: 'person-1', schoolId: 'school-1'
+    })).rejects.toMatchObject({ code: 'OTP_DELIVERY_FAILED', statusCode: 502 });
+    expect(reject).toHaveBeenCalledWith('otp-1', 'school-1');
   });
 
   it('approves only through the scoped code check and never logs the OTP value', async () => {

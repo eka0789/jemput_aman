@@ -1,6 +1,7 @@
 import { escapeHtml as h } from '../utils/html.js';
 
 export function renderPageShell(activeTab, isKioskLocked, authUser = null) {
+  const isParent = authUser?.role === 'PARENT';
   return `
     <header class="edu-card-header" style="margin-bottom: 2rem; padding: 1.25rem 2rem;">
       <div class="container" style="padding: 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.25rem;">
@@ -17,7 +18,7 @@ export function renderPageShell(activeTab, isKioskLocked, authUser = null) {
             <div style="display: flex; align-items: center; gap: 0.5rem;">
               <h1 class="text-gradient-light" style="margin: 0; font-size: 1.7rem; font-family: 'Fredoka', sans-serif;">JemputAman</h1>
               <span class="badge ${isKioskLocked ? 'badge-amber' : 'badge-verified'}" style="font-size: 0.7rem; padding: 0.15rem 0.6rem;">
-                ${isKioskLocked ? '🔒 MODE KIOSK GERBANG (TERKUNCI)' : '🔓 MODE AKSES PENUH'}
+                ${isParent ? 'PORTAL ORANG TUA' : isKioskLocked ? '🔒 MODE KIOSK GERBANG (TERKUNCI)' : '🔓 MODE AKSES PENUH'}
               </span>
             </div>
             <p style="font-size: 0.85rem; color: #94a3b8; margin: 0;">Sistem Verifikasi Penjemputan Anak PAUD/TK</p>
@@ -33,9 +34,12 @@ export function renderPageShell(activeTab, isKioskLocked, authUser = null) {
             </span>
           </div>
 
-          ${isKioskLocked ? `
+          ${isParent ? '' : isKioskLocked ? `
             <button class="btn btn-amber" onclick="window.promptUnlockKiosk()" style="font-size: 0.82rem; padding: 0.45rem 0.9rem;">
               🔑 Buka Kunci Admin (PIN)
+            </button>
+            <button class="btn btn-secondary" onclick="window.loginParentPortal()" style="font-size: 0.82rem; padding: 0.45rem 0.9rem;">
+              Masuk Orang Tua
             </button>
           ` : `
             <button class="btn btn-primary" onclick="window.lockKioskMode()" style="font-size: 0.82rem; padding: 0.45rem 0.9rem; background: linear-gradient(135deg, #d97706, #b45309);">
@@ -54,17 +58,20 @@ export function renderPageShell(activeTab, isKioskLocked, authUser = null) {
       <!-- Segmented Navigation Pills (Only shown if NOT Kiosk Locked, or Reader Tab active) -->
       <div class="container" style="padding: 1rem 0 0 0; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
         <nav style="display: flex; gap: 0.5rem; background: rgba(15, 23, 42, 0.4); padding: 0.4rem; border-radius: 9999px; overflow-x: auto;">
-          <button class="btn ${activeTab === 'reader' ? 'btn-primary' : 'btn-secondary'}" data-tab="reader" style="font-size: 0.88rem; padding: 0.6rem 1.25rem;">
-            📱 Reader Gerbang (Piket)
-          </button>
-          
-          ${!isKioskLocked ? `
+          ${!isParent ? `
+            <button class="btn ${activeTab === 'reader' ? 'btn-primary' : 'btn-secondary'}" data-tab="reader" style="font-size: 0.88rem; padding: 0.6rem 1.25rem;">
+              📱 Reader Gerbang (Piket)
+            </button>
+          ` : ''}
+
+          ${isParent ? `
             <button class="btn ${activeTab === 'parent' ? 'btn-primary' : 'btn-secondary'}" data-tab="parent" style="font-size: 0.88rem; padding: 0.6rem 1.25rem;">
               👨‍👩‍👧 Portal Orang Tua
             </button>
             <button class="btn ${activeTab === 'schedule' ? 'btn-primary' : 'btn-secondary'}" data-tab="schedule" style="font-size: 0.88rem; padding: 0.6rem 1.25rem;">
               📅 Jadwal Penjemputan
             </button>
+          ` : !isKioskLocked ? `
             <button class="btn ${activeTab === 'admin' ? 'btn-primary' : 'btn-secondary'}" data-tab="admin" style="font-size: 0.88rem; padding: 0.6rem 1.25rem;">
               📊 Dashboard Admin
             </button>

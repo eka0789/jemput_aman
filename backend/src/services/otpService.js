@@ -40,6 +40,14 @@ export const otpService = {
       otpCode: randomOtp,
       expiresInMinutes: 10
     });
+    if (!notification.success) {
+      await emergencyOtpModel.reject(otp.id, schoolId);
+      const error = new Error(`OTP tidak dikirim ke WhatsApp orang tua: ${notification.message}`);
+      error.statusCode = 502;
+      error.code = 'OTP_DELIVERY_FAILED';
+      error.notification = notification;
+      throw error;
+    }
     return { ...otp, otp_code: randomOtp, notification };
   },
   approveOtp: async ({
