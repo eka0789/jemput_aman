@@ -161,6 +161,21 @@ export const models = {
     )
   },
   authorizations: {
+    createOrActivate: async (studentId, pickupPersonId) => (
+      unwrapSupabase(
+        await client()
+          .from('authorizations')
+          .upsert({
+            id: createId('auth'),
+            student_id: studentId,
+            pickup_person_id: pickupPersonId,
+            is_active: true
+          }, { onConflict: 'student_id,pickup_person_id' })
+          .select()
+          .single(),
+        'menautkan penjemput dengan siswa'
+      )
+    ),
     findValidAuth: async (studentId, pickupPersonId) => (
       unwrapSupabase(
         await client()

@@ -63,9 +63,12 @@ export function renderDataManagementPage(state) {
             <div style="background: linear-gradient(135deg, #0f172a, #0f766e); border-radius: 18px; padding: 1.75rem; text-align: center; color: white;">
               <div style="font-size: 3.5rem; margin-bottom: 0.5rem;" class="animate-float">📡</div>
               <h4 style="color: #5eead4; margin-bottom: 0.35rem; font-size: 1.15rem;">Tap Kartu NFC Baru Di Sini</h4>
-              <p style="font-size: 0.82rem; color: #cbd5e1; margin-bottom: 1.25rem;">
-                Tempelkan kartu NFC ke bagian belakang tablet/HP atau klik tombol simulasi tap otomatis di bawah:
+              <p id="nfc-registration-status" style="font-size: 0.82rem; color: #cbd5e1; margin-bottom: 1.25rem;">
+                Aktifkan pemindai, lalu tempelkan kartu NFC ke bagian belakang tablet/HP.
               </p>
+              <button class="btn btn-amber" onclick="window.startNfcRegistrationReader()" style="width: 100%; font-size: 0.85rem; margin-bottom: 0.65rem;">
+                📡 Aktifkan Pemindai Kartu Fisik
+              </button>
               <button class="btn btn-amber" onclick="window.autoFillNewNfcUid()" style="width: 100%; font-size: 0.85rem;">
                 ⚡ Tap Simulasi Kartu Baru (Auto-Detect UID)
               </button>
@@ -79,12 +82,29 @@ export function renderDataManagementPage(state) {
               </div>
 
               <div>
-                <label style="font-size: 0.82rem; font-weight: bold; color: #334155; display: block; margin-bottom: 0.25rem;">Penjemput Sah Terdaftar:</label>
-                <select id="reg_pickup_person_id" style="width: 100%; padding: 0.6rem; border-radius: 8px; border: 1.5px solid #cbd5e1;">
+                <label style="font-size: 0.82rem; font-weight: bold; color: #334155; display: block; margin-bottom: 0.25rem;">Penjemput / Orang Tua Pemegang Kartu:</label>
+                <select id="reg_pickup_person_id" onchange="window.toggleNewPickupPersonFields(this.value === '__new__')" style="width: 100%; padding: 0.6rem; border-radius: 8px; border: 1.5px solid #cbd5e1;">
+                  <option value="__new__">+ Masukkan Penjemput / Orang Tua Baru</option>
                   ${pickupPersons.map(person => `
                     <option value="${h(person.id)}">${h(person.name)} (${h(person.relationship)})</option>
                   `).join('')}
                 </select>
+              </div>
+
+              <div id="new-pickup-person-fields" style="display: grid; gap: 0.65rem; padding: 0.85rem; border: 1.5px solid #99f6e4; border-radius: 10px; background: #f0fdfa;">
+                <strong style="font-size: 0.82rem; color: #0f766e;">Data penjemput/orang tua baru</strong>
+                <input type="text" id="reg_pickup_name" placeholder="Nama lengkap pemegang kartu" maxlength="120" style="padding: 0.6rem; border-radius: 8px; border: 1px solid #cbd5e1;" />
+                <select id="reg_pickup_relationship" style="padding: 0.6rem; border-radius: 8px; border: 1px solid #cbd5e1;">
+                  <option value="">Pilih hubungan dengan siswa</option>
+                  <option value="Ayah Kandung">Ayah Kandung</option>
+                  <option value="Ibu Kandung">Ibu Kandung</option>
+                  <option value="Wali">Wali</option>
+                  <option value="Kakek">Kakek</option>
+                  <option value="Nenek">Nenek</option>
+                  <option value="Supir Keluarga">Supir Keluarga</option>
+                  <option value="Kerabat">Kerabat</option>
+                </select>
+                <input type="tel" id="reg_pickup_phone" placeholder="Nomor WhatsApp, contoh 081234567890" inputmode="tel" maxlength="16" style="padding: 0.6rem; border-radius: 8px; border: 1px solid #cbd5e1;" />
               </div>
 
               <div>

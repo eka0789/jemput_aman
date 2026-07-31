@@ -606,14 +606,56 @@ window.submitNewStudent = async () => {
 };
 
 // Tap-to-Bind Registration Handlers
+window.startNfcRegistrationReader = async () => {
+  const status = document.getElementById('nfc-registration-status');
+  if (status) status.textContent = 'Menunggu kartu NFC ditempelkan...';
+
+  const started = await webNfc.startScan(
+    card => {
+      state.newCardUid = card.serialNumber;
+      const uidInput = document.getElementById('reg_nfc_uid');
+      if (uidInput) uidInput.value = card.serialNumber;
+      const currentStatus = document.getElementById('nfc-registration-status');
+      if (currentStatus) {
+        currentStatus.textContent = `Kartu berhasil dipindai. UID: ${card.serialNumber}`;
+        currentStatus.style.color = '#99f6e4';
+      }
+    },
+    message => {
+      const currentStatus = document.getElementById('nfc-registration-status');
+      if (currentStatus) {
+        currentStatus.textContent = message;
+        currentStatus.style.color = '#fde68a';
+      }
+      alert(message);
+    },
+    { once: true }
+  );
+
+  if (!started && status) {
+    status.textContent = 'Pemindai NFC belum aktif. Periksa dukungan browser dan izin NFC.';
+  }
+};
+
 window.autoFillNewNfcUid = () => {
   const randomUid = '04:' + Array.from({length: 6}, () => Math.floor(Math.random()*256).toString(16).padStart(2, '0').toUpperCase()).join(':');
   state.newCardUid = randomUid;
-  render();
+  const uidInput = document.getElementById('reg_nfc_uid');
+  if (uidInput) uidInput.value = randomUid;
+  const status = document.getElementById('nfc-registration-status');
+  if (status) {
+    status.textContent = `Simulasi kartu berhasil. UID: ${randomUid}`;
+    status.style.color = '#99f6e4';
+  }
+};
+
+window.toggleNewPickupPersonFields = show => {
+  const fields = document.getElementById('new-pickup-person-fields');
+  if (fields) fields.style.display = show ? 'grid' : 'none';
 };
 
 window.submitFullNfcRegistration = async () => {
-  const uid = state.newCardUid || document.getElementById('reg_nfc_uid')?.value;
+  const uid = String(state.newCardUid || document.getElementById('reg_nfc_uid')?.value || '').trim();
   const pickupSelect = document.getElementById('reg_pickup_person_id');
   const studentSelect = document.getElementById('reg_student_id');
 
@@ -621,14 +663,33 @@ window.submitFullNfcRegistration = async () => {
     alert('Silakan tempelkan kartu NFC atau klik tombol simulasi tap otomatis untuk membaca UID kartu!');
     return;
   }
-  if (!pickupSelect?.value) {
-    alert('Silakan pilih penjemput terdaftar.');
+  if (!studentSelect?.value) {
+    alert('Silakan pilih siswa yang boleh dijemput.');
     return;
   }
 
-  const pickupPerson = state.pickupPersons.find(person => person.id === pickupSelect.value);
+  const isNewPickupPerson = pickupSelect?.value === '__new__';
+  let newPickupPerson = null;
+  let pickupPerson = null;
+  if (isNewPickupPerson) {
+    newPickupPerson = {
+      full_name: document.getElementById('reg_pickup_name')?.value.trim(),
+      relationship: document.getElementById('reg_pickup_relationship')?.value,
+      phone_number: document.getElementById('reg_pickup_phone')?.value.trim()
+    };
+    if (!newPickupPerson.full_name || !newPickupPerson.relationship || !newPickupPerson.phone_number) {
+      alert('Lengkapi nama, hubungan dengan siswa, dan nomor WhatsApp penjemput/orang tua.');
+      return;
+    }
+  } else {
+    pickupPerson = state.pickupPersons.find(person => person.id === pickupSelect?.value);
+    if (!pickupPerson) {
+      alert('Silakan pilih penjemput terdaftar atau masukkan penjemput baru.');
+      return;
+    }
+  }
+
   const studentName = studentSelect?.options[studentSelect.selectedIndex]?.text || 'Siswa';
-  const holderText = `${pickupPerson.name} (${pickupPerson.relationship})`;
 
   try {
     const response = await apiFetch('/nfc/cards/bind', {
@@ -636,9 +697,25 @@ window.submitFullNfcRegistration = async () => {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ card_uid: uid, pickup_person_id: pickupPerson.id })
+      body: JSON.stringify({
+        card_uid: uid,
+        student_id: studentSelect.value,
+        pickup_person_id: pickupPerson?.id,
+        new_pickup_person: newPickupPerson
+      })
     }, 'ADMIN');
     const result = await readJsonResponse(response, 'Kartu NFC gagal ditautkan.');
+    const savedPerson = result.data.pickup_person;
+    const holderText = `${savedPerson.full_name} (${savedPerson.relationship})`;
+    if (isNewPickupPerson) {
+      state.pickupPersons.push({
+        id: savedPerson.id,
+        name: savedPerson.full_name,
+        relationship: savedPerson.relationship,
+        phone: savedPerson.phone_number,
+        photo_url: savedPerson.photo_url
+      });
+    }
     state.cards.unshift({
       uid: result.data.card_uid,
       pickup_person_id: result.data.pickup_person_id,

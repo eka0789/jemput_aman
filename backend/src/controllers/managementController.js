@@ -23,6 +23,17 @@ const normalizeCardUid = value => {
   return uid;
 };
 
+const normalizePhone = value => {
+  const phoneNumber = String(value || '').replace(/[\s()-]/g, '');
+  if (!/^(?:\+62|62|0)8\d{8,12}$/.test(phoneNumber)) {
+    const error = new Error('Nomor WhatsApp penjemput harus berupa nomor seluler Indonesia yang valid');
+    error.statusCode = 400;
+    error.code = 'INVALID_PHONE';
+    throw error;
+  }
+  return phoneNumber;
+};
+
 export const getStudents = async (req, res, next) => {
   try {
     const schoolId = req.schoolId;
@@ -185,13 +196,45 @@ export const updateCardStatus = async (req, res, next) => {
 export const bindNfcCard = async (req, res, next) => {
   try {
     const schoolId = req.schoolId;
-    const { card_uid, pickup_person_id } = req.body;
-    if (!card_uid || !pickup_person_id) {
-      return res.status(400).json({ error: 'INVALID_INPUT', message: 'UID Kartu NFC dan ID Penjemput wajib diisi' });
+    const { card_uid, pickup_person_id, student_id, new_pickup_person } = req.body;
+    if (!card_uid || !student_id || (!pickup_person_id && !new_pickup_person)) {
+      return res.status(400).json({
+        error: 'INVALID_INPUT',
+        message: 'UID kartu NFC, siswa, dan data penjemput wajib diisi'
+      });
     }
 
     const cardUid = normalizeCardUid(card_uid);
-    const pickupPerson = await models.pickupPersons.findById(pickup_person_id, schoolId);
+    const existingCard = await models.nfcCards.findByUid(cardUid, schoolId);
+    if (existingCard) {
+      return res.status(409).json({
+        error: 'CARD_ALREADY_EXISTS',
+        message: 'UID kartu NFC sudah terdaftar'
+      });
+    }
+
+    const student = await models.students.findById(String(student_id), schoolId);
+    if (!student || student.status !== 'ACTIVE') {
+      return res.status(400).json({
+        error: 'INVALID_STUDENT',
+        message: 'Siswa aktif tidak ditemukan pada sekolah ini'
+      });
+    }
+
+    let pickupPerson;
+    if (new_pickup_person) {
+      pickupPerson = await models.pickupPersons.create({
+        school_id: schoolId,
+        parent_id: student.parent_id || null,
+        full_name: normalizeText(new_pickup_person.full_name, 'Nama penjemput'),
+        relationship: normalizeText(new_pickup_person.relationship, 'Hubungan dengan siswa', 60),
+        phone_number: normalizePhone(new_pickup_person.phone_number),
+        photo_url: '/avatar-placeholder.svg'
+      });
+    } else {
+      pickupPerson = await models.pickupPersons.findById(String(pickup_person_id), schoolId);
+    }
+
     if (!pickupPerson || pickupPerson.status !== 'ACTIVE') {
       return res.status(400).json({
         error: 'INVALID_PICKUP_PERSON',
@@ -199,11 +242,17 @@ export const bindNfcCard = async (req, res, next) => {
       });
     }
 
-    const newCard = await cardManagementService.bindCardToPerson(cardUid, pickup_person_id, schoolId);
+    const authorization = await models.authorizations.createOrActivate(student.id, pickupPerson.id);
+    const newCard = await cardManagementService.bindCardToPerson(cardUid, pickupPerson.id, schoolId);
     res.status(201).json({
       success: true,
-      message: `Kartu NFC [${cardUid}] berhasil ditautkan dan langsung aktif!`,
-      data: newCard
+      message: `Kartu NFC [${cardUid}] berhasil ditautkan ke ${pickupPerson.full_name} dan langsung aktif!`,
+      data: {
+        ...newCard,
+        pickup_person: pickupPerson,
+        student,
+        authorization
+      }
     });
   } catch (err) {
     next(err);
