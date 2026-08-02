@@ -205,7 +205,7 @@ export function renderGateReaderPage(state) {
               <div style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.6;" class="animate-float">📋</div>
               <h3 style="color: #0f766e; margin-bottom: 0.5rem;">Belum Ada Pengetapan Kartu</h3>
               <p style="font-size: 0.92rem; color: #64748b; max-width: 320px; margin: 0 auto;">
-                Tempelkan kartu NFC fisik di sebelah kiri atau klik tombol simulator untuk memulai verifikasi penjemputan anak.
+                Tempelkan kartu NFC fisik di sebelah kiri untuk memulai verifikasi penjemputan anak.
               </p>
             </div>
           `}
