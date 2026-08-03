@@ -45,23 +45,28 @@ Expected response:
 
 For Vercel, add the same server-only variables in Project Settings.
 
-## 4. Vercel monorepo setup
+## 4. Vercel monorepo deployment setup
 
-JemputAman uses Vercel Services from the root `vercel.json`, so frontend and backend
-deploy together under one project and one domain.
+JemputAman uses a single-project Vercel deployment with serverless API functions and static frontend compilation:
 
-In Vercel Project Settings:
+- **Root Directory**: repository root (`.`)
+- **Build Command**: `npm run build` (runs `npm --prefix frontend install && npm --prefix frontend run build`)
+- **Output Directory**: `frontend/dist`
+- **Serverless API Entrypoint**: `api/index.js` (routes `/api/*` to Express backend)
 
-- Root Directory: repository root (`.`)
-- Framework Preset: Services
-- Environment Variables:
+In Vercel Project Settings -> Environment Variables, set:
   - `SUPABASE_URL`
   - `SUPABASE_SECRET_KEY`
+  - `JWT_SECRET`
+  - `ADMIN_PASSWORD_HASH`
+  - `FOUNDATION_PASSWORD_HASH`
+  - `KIOSK_PIN_HASH`
+  - `CRON_SECRET`
   - `DEFAULT_SCHOOL_ID`
   - `WHATSAPP_API_URL`
   - `WHATSAPP_API_TOKEN`
 
-Do not set `VITE_API_BASE_URL` for this single-domain setup. The frontend uses
-`/api/v1`, which is routed to the Express backend by the root rewrite.
+Do not set `VITE_API_BASE_URL` for this single-domain setup. The frontend uses `/api/v1`, which is routed to the Express serverless backend by Vercel rewrites.
 
-After deployment, verify `/api/health` and confirm that `database` is `CONNECTED`.
+After deployment, verify `GET /api/health` and confirm that `status` is `HEALTHY` and `database` is `CONNECTED`.
+
