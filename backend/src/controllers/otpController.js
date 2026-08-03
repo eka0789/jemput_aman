@@ -63,7 +63,12 @@ export const approveEmergencyOtp = async (req, res, next) => {
       });
     }
 
-    res.json({ success: true, message: 'Verifikasi Darurat OTP Disetujui', data: publicOtp(approved) });
+    res.json({
+      success: true,
+      status: approved.verification.status,
+      message: approved.verification.message,
+      data: approved.verification.data
+    });
   } catch (err) {
     next(err);
   }

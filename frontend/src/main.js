@@ -115,6 +115,7 @@ function render() {
       }
       state.activeTab = e.currentTarget.getAttribute('data-tab');
       render();
+      if (state.activeTab === 'reader') loadPendingOtps();
       if (state.activeTab === 'schedule') loadStudentSchedule();
       if (state.activeTab === 'parent') loadPendingOtps();
       if (state.activeTab === 'admin') loadAdminDashboard();
@@ -1182,30 +1183,40 @@ window.submitEmergencyOtp = async event => {
 
 window.approveOtp = async (otpId) => {
   const otp = state.pendingOtps.find(item => item.id === otpId);
-  const parentOneClickApproval = !import.meta.env.DEV && getTokenRole() === 'PARENT';
-  const code = parentOneClickApproval
-    ? null
-    : prompt('Masukkan kode OTP 6 digit:', otp?.debug_otp_code || '');
-  if (!parentOneClickApproval && code === null) return;
+  // Approval dilakukan di Gate Reader (petugas memasukkan kode OTP 6-digit
+  // yang diterima orang tua via WhatsApp). Kode wajib diketik di semua mode.
+  const code = prompt('Masukkan kode OTP 6 digit yang diterima orang tua:', otp?.debug_otp_code || '');
+  if (code === null) return;
   try {
     const response = await apiFetch('/pickup/approve-otp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ otp_id: otpId, otp_code: code })
-    }, 'PARENT');
+    }, 'TEACHER');
     const result = await readJsonResponse(response, 'OTP gagal disetujui.');
     state.pendingOtps = state.pendingOtps.filter(item => item.id !== otpId);
+    // Backend kini mengembalikan status PENDING_PHOTO dengan shape meniru
+    // verifyTap (data berisi student/pickup_person/parent/pickup_log_id),
+    // sehingga pipeline foto wajah yang sama dengan NFC tap dapat menyala.
+    state.lastVerification = result;
+    state.cameraError = '';
+    state.cameraPreview = '';
+    state.pendingVerificationPhoto = '';
+    state.cameraUploading = false;
     state.pickupLogs.unshift({
-      id: `log-${Date.now()}`,
-      student_name: otp?.student_name || 'Siswa',
-      pickup_person_name: otp?.pickup_person_name || 'Penjemput',
+      id: result.data?.pickup_log_id || `log-${Date.now()}`,
+      student_name: result.data?.student?.full_name || otp?.student_name || 'Siswa',
+      pickup_person_name: `${result.data?.pickup_person?.full_name || otp?.pickup_person_name || 'Penjemput'} (${result.data?.pickup_person?.relationship || 'Terdaftar'})`,
       verification_method: 'EMERGENCY_OTP',
-      status: 'VERIFIED',
-      timestamp: new Date().toISOString(),
-      notes: 'Disetujui menggunakan OTP valid'
+      status: result.status,
+      timestamp: result.data?.timestamp || new Date().toISOString(),
+      notes: result.message,
+      verification_photo: null
     });
-    alert(result.message);
     render();
+    if (['PENDING_PHOTO', 'VERIFIED'].includes(result.status)) {
+      await captureVerificationPhoto();
+    }
   } catch (error) {
     alert(error.message || 'OTP gagal disetujui.');
   }
@@ -1340,6 +1351,9 @@ const hydrateAuthSession = async () => {
     if (state.authUser.role === 'PARENT') {
       state.isKioskLocked = false;
       state.activeTab = 'parent';
+      await loadPendingOtps();
+    } else if (state.authUser.role === 'TEACHER' || state.authUser.role === 'ADMIN') {
+      // Petugas gerbang perlu melihat OTP yang sudah terkirim untuk diinput kodenya.
       await loadPendingOtps();
     }
   } catch {

@@ -48,7 +48,7 @@ export function renderGateReaderPage(state) {
                 🆘 Lupa Bawa Kartu NFC?
               </div>
               <button class="btn btn-amber" onclick="window.openEmergencyModal()" style="width: 100%; font-size: 0.88rem;">
-                Gunakan Mode Darurat OTP (Approval Orang Tua)
+                Gunakan Mode Darurat OTP (Kirim Kode ke Orang Tua)
               </button>
               ${state.showEmergencyOtp ? `
                 <form class="emergency-otp-form" onsubmit="window.submitEmergencyOtp(event)">
@@ -79,6 +79,27 @@ export function renderGateReaderPage(state) {
               ` : ''}
             </div>
           </div>
+
+          <!-- Pending OTP Approval: petugas input kode dari WhatsApp orang tua -->
+          ${(state.pendingOtps || []).length > 0 ? `
+            <div style="margin-top: 1.25rem;">
+              <div style="font-size: 0.85rem; font-weight: bold; color: #92400e; margin-bottom: 0.5rem;">
+                ⏳ OTP Terkirim — Masukkan Kode dari Orang Tua
+              </div>
+              ${(state.pendingOtps || []).map(otp => `
+                <div style="background: white; border: 1px solid #fcd34d; border-radius: 12px; padding: 0.85rem; margin-bottom: 0.6rem; text-align: left;">
+                  <div style="font-weight: 800; font-size: 0.9rem; color: #0f766e;">Siswa: ${h(otp.student_name)}</div>
+                  <div style="font-size: 0.8rem; color: #64748b;">Penjemput: ${h(otp.pickup_person_name)}</div>
+                  <button class="btn btn-amber" onclick="window.approveOtp('${h(otp.id)}')" style="width: 100%; margin-top: 0.6rem; font-size: 0.85rem;">
+                    ✅ Masukkan Kode OTP & Verifikasi Wajah
+                  </button>
+                </div>
+              `).join('')}
+              <p style="font-size: 0.75rem; color: #94a3b8; margin: 0.4rem 0 0 0;">
+                Klik tombol di atas, masukkan 6 digit dari WhatsApp orang tua, lalu kamera wajah akan terbuka otomatis.
+              </p>
+            </div>
+          ` : ''}
         </div>
 
         <!-- Right Column: Verification Result Display -->
