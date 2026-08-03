@@ -908,13 +908,14 @@ const captureVerificationPhoto = async ({ retake = false } = {}) => {
   state.cameraPreview = '';
   state.pendingVerificationPhoto = '';
   try {
-    const facePhoto = await captureFacePhoto();
+    const livenessResult = await captureFacePhotoWithLiveness();
+    const facePhoto = livenessResult?.photo || livenessResult;
     state.cameraPreview = facePhoto;
     state.pendingVerificationPhoto = facePhoto;
     render();
     await uploadPendingVerificationPhoto();
   } catch (err) {
-    state.cameraError = err.message || 'Kamera gagal mengambil foto verifikasi.';
+    state.cameraError = err.message || 'Kamera gagal mengambil foto verifikasi Liveness.';
     render();
   }
 };

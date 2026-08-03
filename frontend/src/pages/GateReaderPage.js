@@ -43,45 +43,6 @@ export function renderGateReaderPage(state) {
 
           <!-- Emergency OTP Trigger Box -->
           <div style="border-top: 2px dashed #e2e8f0; padding-top: 1.25rem;">
-            <!-- Face Biometric & Anti-Spoofing Liveness Verification -->
-            <div style="background: linear-gradient(135deg, #f0fdf4, #e0f2fe); border: 2px solid #0284c7; border-radius: var(--radius-md); padding: 1rem; text-align: center; margin-bottom: 1rem; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08);">
-              <div style="font-size: 0.9rem; font-weight: 800; color: #0369a1; margin-bottom: 0.35rem; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
-                <span>👤✨</span> Verifikasi Wajah & Deteksi Liveness
-              </div>
-              <p style="font-size: 0.78rem; color: #334155; margin: 0 0 0.75rem 0;">
-                Cocokkan foto wajah kamera live penjemput dengan foto profil terdaftar di Supabase + Anti-Spoofing Kedipan Mata.
-              </p>
-              <button class="btn btn-primary" onclick="window.openFaceLivenessModal()" style="width: 100%; font-size: 0.88rem; background: #0284c7; border-color: #0284c7;">
-                📸 Mulai Deteksi Wajah & Liveness Live
-              </button>
-              ${state.showFaceLivenessModal ? `
-                <form class="emergency-otp-form" onsubmit="window.submitFaceLivenessVerification(event)" style="margin-top: 0.85rem; text-align: left; background: white; padding: 1rem; border-radius: 12px; border: 1px solid #bae6fd;">
-                  <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #0f172a; margin-bottom: 0.5rem;">
-                    Siswa Yang Dijemput
-                    <select id="face_student_id" required style="width: 100%; padding: 0.5rem; margin-top: 0.25rem; border-radius: 6px; border: 1px solid #cbd5e1;">
-                      <option value="">Pilih Siswa</option>
-                      ${(state.students || []).map(student => `
-                        <option value="${h(student.id)}">${h(student.name)} (${h(student.class_name)})</option>
-                      `).join('')}
-                    </select>
-                  </label>
-                  <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #0f172a; margin-bottom: 0.75rem;">
-                    Penjemput Terdaftar
-                    <select id="face_pickup_person_id" required style="width: 100%; padding: 0.5rem; margin-top: 0.25rem; border-radius: 6px; border: 1px solid #cbd5e1;">
-                      <option value="">Pilih Penjemput</option>
-                      ${(state.pickupPersons || []).map(person => `
-                        <option value="${h(person.id)}">${h(person.name)} (${h(person.relationship)})</option>
-                      `).join('')}
-                    </select>
-                  </label>
-                  <div class="emergency-otp-form__actions" style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-                    <button type="button" class="btn btn-secondary" onclick="window.closeFaceLivenessModal()">Batal</button>
-                    <button type="submit" class="btn btn-primary" style="background: #0284c7;">Buka Kamera & Pindai</button>
-                  </div>
-                </form>
-              ` : ''}
-            </div>
-
             <div style="background: #fffbeb; border: 2px dashed #f59e0b; border-radius: var(--radius-md); padding: 1rem; text-align: center;">
               <div style="font-size: 0.85rem; font-weight: bold; color: #92400e; margin-bottom: 0.5rem;">
                 🆘 Lupa Bawa Kartu NFC?
