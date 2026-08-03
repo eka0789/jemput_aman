@@ -50,6 +50,7 @@ For Vercel, add the same server-only variables in Project Settings.
 JemputAman uses a single-project Vercel deployment with serverless API functions and static frontend compilation:
 
 - **Root Directory**: repository root (`.`)
+- **Framework Preset**: `Vite` (atau `Other`, **JANGAN** pilih `Services`)
 - **Build Command**: `npm run build` (runs `npm --prefix frontend install && npm --prefix frontend run build`)
 - **Output Directory**: `frontend/dist`
 - **Serverless API Entrypoint**: `api/index.js` (routes `/api/*` to Express backend)
