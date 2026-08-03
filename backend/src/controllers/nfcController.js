@@ -1,4 +1,5 @@
 import { nfcService } from '../services/nfcService.js';
+import { faceVerificationService } from '../services/faceVerificationService.js';
 import { whatsappService } from '../services/whatsappService.js';
 import { pushNotificationService } from '../services/pushNotificationService.js';
 import { models } from '../models/schema.js';
@@ -127,3 +128,48 @@ export const attachVerificationPhoto = async (req, res, next) => {
     next(err);
   }
 };
+
+export const verifyFaceLiveness = async (req, res, next) => {
+  try {
+    const { student_id, pickup_person_id, live_photo, liveness_data } = req.body;
+
+    if (!student_id || !pickup_person_id || !live_photo) {
+      return res.status(400).json({
+        error: 'INVALID_INPUT',
+        message: 'ID siswa, ID penjemput, dan foto kamera live wajib dikirimkan'
+      });
+    }
+
+    const result = await faceVerificationService.verifyLiveFaceAgainstReference({
+      schoolId: req.schoolId,
+      studentId: student_id,
+      pickupPersonId: pickup_person_id,
+      livePhoto: live_photo,
+      livenessData: liveness_data,
+      teacherId: req.user?.id || 'usr-teacher-1'
+    });
+
+    if (!result.verified) {
+      return res.status(400).json(result);
+    }
+
+    // Trigger parent notifications on verified face pickup
+    const student = await models.students.findById(student_id, req.schoolId);
+    const parent = student?.parent_id
+      ? await models.users.findById(student.parent_id, req.schoolId)
+      : null;
+    const notification = await dispatchPickupNotifications({
+      schoolId: req.schoolId,
+      studentName: result.data.student.full_name,
+      pickupPersonName: `${result.data.pickup_person.full_name} (${result.data.pickup_person.relationship})`,
+      parentPhone: parent?.phone_number,
+      timestamp: result.data.timestamp
+    });
+
+    Object.assign(result.data, notification);
+    return res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
