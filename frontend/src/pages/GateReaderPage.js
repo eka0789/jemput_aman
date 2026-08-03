@@ -6,12 +6,14 @@ export function renderGateReaderPage(state) {
   const isBlocked = state.lastVerification?.status === 'BLOCKED';
   const whatsappStatus = state.lastVerification?.data?.notification_status?.whatsapp;
   const pushStatus = state.lastVerification?.data?.notification_status?.push;
+  const cameraActionLabel = state.pendingVerificationPhoto ? 'Upload Lagi' : 'Coba Kamera Lagi';
+  const cameraPreview = state.cameraPreview || state.lastVerification?.data?.verification_photo;
 
   return `
     <div class="container">
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.75rem; align-items: start;">
         
-        <!-- Left Column: NFC Reader & Tap Simulator -->
+        <!-- Left Column: Physical NFC Reader -->
         <div class="edu-card nfc-scanner-card" style="background: white;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem;">
             <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -29,7 +31,7 @@ export function renderGateReaderPage(state) {
             <div style="font-size: 4rem; margin-bottom: 0.75rem;" class="animate-float">🎴</div>
             <h3 style="margin-bottom: 0.5rem; color: #5eead4; font-size: 1.35rem;">Tempelkan Kartu NFC Penjemput</h3>
             <p style="font-size: 0.88rem; color: #cbd5e1; max-width: 320px; margin: 0 auto 1.25rem auto;">
-              Dekatkan kartu NFC fisik ke area sensor tablet/smartphone atau uji pengetapan dengan simulator di bawah
+              Dekatkan kartu NFC fisik ke area sensor tablet atau smartphone
             </p>
             <div style="display: inline-block; background: rgba(255,255,255,0.12); padding: 0.4rem 1rem; border-radius: 9999px; font-size: 0.78rem; color: #99f6e4;">
               Web NFC Engine v1.0 • Latensi &lt; 2s
@@ -39,60 +41,65 @@ export function renderGateReaderPage(state) {
             </button>
           </div>
 
-          <!-- Simulator Quick Tap Buttons -->
+          <!-- Emergency OTP Trigger Box -->
           <div style="border-top: 2px dashed #e2e8f0; padding-top: 1.25rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-              <span style="font-size: 0.85rem; font-weight: 800; color: #0f766e; text-transform: uppercase; letter-spacing: 0.03em;">
-                ⚡ Simulator Tap Kartu NFC:
-              </span>
-              <span class="badge badge-sky" style="font-size: 0.7rem;">Mode Demo</span>
-            </div>
-
-            <div style="display: flex; flex-direction: column; gap: 0.65rem;">
-              <button class="btn btn-primary" onclick="window.simulateNfcTap('04:A2:8B:12:FE:67:80')" style="justify-content: space-between; padding: 0.85rem 1.25rem;">
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                  <span style="font-size: 1.2rem;">👨‍👦</span>
-                  <div style="text-align: left;">
-                    <div style="font-size: 0.9rem; font-weight: bold;">Tap Kartu Ayah (Budi Santoso)</div>
-                    <div style="font-size: 0.75rem; opacity: 0.85;">Penjemput Sah • Siswa: Ananda Bintang</div>
-                  </div>
-                </div>
-                <code style="font-size: 0.75rem; background: rgba(0,0,0,0.25); padding: 3px 8px; border-radius: 6px; color: #99f6e4;">04:A2:...</code>
-              </button>
-
-              <button class="btn btn-primary" onclick="window.simulateNfcTap('04:B3:9C:23:FF:78:91')" style="justify-content: space-between; padding: 0.85rem 1.25rem; background: linear-gradient(135deg, #0d9488, #0f766e);">
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                  <span style="font-size: 1.2rem;">🚗</span>
-                  <div style="text-align: left;">
-                    <div style="font-size: 0.9rem; font-weight: bold;">Tap Kartu Supir (Pak Joko)</div>
-                    <div style="font-size: 0.75rem; opacity: 0.85;">Penjemput Sah • Siswa: Ananda Bintang</div>
-                  </div>
-                </div>
-                <code style="font-size: 0.75rem; background: rgba(0,0,0,0.25); padding: 3px 8px; border-radius: 6px; color: #99f6e4;">04:B3:...</code>
-              </button>
-
-              <button class="btn btn-danger" onclick="window.simulateNfcTap('99:99:99:99:99:99:99')" style="justify-content: space-between; padding: 0.85rem 1.25rem;">
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                  <span style="font-size: 1.2rem;">⚠️</span>
-                  <div style="text-align: left;">
-                    <div style="font-size: 0.9rem; font-weight: bold;">Tap Kartu Hilang / Asing</div>
-                    <div style="font-size: 0.75rem; opacity: 0.85;">Kartu Tak Terdaftar • Simulasi Uji Keamanan</div>
-                  </div>
-                </div>
-                <code style="font-size: 0.75rem; background: rgba(0,0,0,0.25); padding: 3px 8px; border-radius: 6px; color: #fecaca;">99:99:...</code>
-              </button>
-            </div>
-
-            <!-- Emergency OTP Trigger Box -->
-            <div style="margin-top: 1.25rem; background: #fffbeb; border: 2px dashed #f59e0b; border-radius: var(--radius-md); padding: 1rem; text-align: center;">
+            <div style="background: #fffbeb; border: 2px dashed #f59e0b; border-radius: var(--radius-md); padding: 1rem; text-align: center;">
               <div style="font-size: 0.85rem; font-weight: bold; color: #92400e; margin-bottom: 0.5rem;">
                 🆘 Lupa Bawa Kartu NFC?
               </div>
               <button class="btn btn-amber" onclick="window.openEmergencyModal()" style="width: 100%; font-size: 0.88rem;">
-                Gunakan Mode Darurat OTP (Approval Orang Tua)
+                Gunakan Mode Darurat OTP (Kirim Kode ke Orang Tua)
               </button>
+              ${state.showEmergencyOtp ? `
+                <form class="emergency-otp-form" onsubmit="window.submitEmergencyOtp(event)">
+                  <label>
+                    Siswa
+                    <select id="otp_student_id" required>
+                      <option value="">Pilih siswa</option>
+                      ${(state.students || []).map(student => `
+                        <option value="${h(student.id)}">${h(student.name)} (${h(student.class_name)})</option>
+                      `).join('')}
+                    </select>
+                  </label>
+                  <label>
+                    Penjemput
+                    <select id="otp_pickup_person_id" required>
+                      <option value="">Pilih penjemput terdaftar</option>
+                      ${(state.pickupPersons || []).map(person => `
+                        <option value="${h(person.id)}">${h(person.name)} (${h(person.relationship)})</option>
+                      `).join('')}
+                    </select>
+                  </label>
+                  <p>Kode hanya dikirim ke nomor WhatsApp orang tua yang terhubung dengan siswa.</p>
+                  <div class="emergency-otp-form__actions">
+                    <button type="button" class="btn btn-secondary" onclick="window.closeEmergencyModal()">Batal</button>
+                    <button type="submit" class="btn btn-amber">Kirim OTP</button>
+                  </div>
+                </form>
+              ` : ''}
             </div>
           </div>
+
+          <!-- Pending OTP Approval: petugas input kode dari WhatsApp orang tua -->
+          ${(state.pendingOtps || []).length > 0 ? `
+            <div style="margin-top: 1.25rem;">
+              <div style="font-size: 0.85rem; font-weight: bold; color: #92400e; margin-bottom: 0.5rem;">
+                ⏳ OTP Terkirim — Masukkan Kode dari Orang Tua
+              </div>
+              ${(state.pendingOtps || []).map(otp => `
+                <div style="background: white; border: 1px solid #fcd34d; border-radius: 12px; padding: 0.85rem; margin-bottom: 0.6rem; text-align: left;">
+                  <div style="font-weight: 800; font-size: 0.9rem; color: #0f766e;">Siswa: ${h(otp.student_name)}</div>
+                  <div style="font-size: 0.8rem; color: #64748b;">Penjemput: ${h(otp.pickup_person_name)}</div>
+                  <button class="btn btn-amber" onclick="window.approveOtp('${h(otp.id)}')" style="width: 100%; margin-top: 0.6rem; font-size: 0.85rem;">
+                    ✅ Masukkan Kode OTP & Verifikasi Wajah
+                  </button>
+                </div>
+              `).join('')}
+              <p style="font-size: 0.75rem; color: #94a3b8; margin: 0.4rem 0 0 0;">
+                Klik tombol di atas, masukkan 6 digit dari WhatsApp orang tua, lalu kamera wajah akan terbuka otomatis.
+              </p>
+            </div>
+          ` : ''}
         </div>
 
         <!-- Right Column: Verification Result Display -->
@@ -177,15 +184,30 @@ export function renderGateReaderPage(state) {
                   <p style="font-size: 0.9rem; color: #78350f; line-height: 1.5;">
                     Kartu NFC cocok, tetapi siswa belum boleh meninggalkan gerbang sampai foto wajah berhasil diambil dan disimpan.
                   </p>
+                  ${cameraPreview ? `
+                    <div class="camera-result-preview">
+                      <div class="camera-result-preview__label">
+                        ${state.cameraUploading ? 'Mengunggah foto ke penyimpanan...' : 'Foto berhasil diambil'}
+                      </div>
+                      <img src="${h(cameraPreview)}" alt="Preview foto verifikasi yang baru diambil" />
+                    </div>
+                  ` : ''}
                   ${state.cameraError ? `
                     <div class="camera-error-panel" role="alert">
                       <div>
                         <strong>Foto verifikasi belum tersimpan</strong>
                         <p>${h(state.cameraError)}</p>
                       </div>
-                      <button class="btn btn-secondary" onclick="window.retryVerificationPhoto()">Coba Kamera Lagi</button>
+                      <div class="camera-error-panel__actions">
+                        <button class="btn btn-primary" onclick="window.retryVerificationPhoto()">${cameraActionLabel}</button>
+                        ${state.pendingVerificationPhoto
+                          ? '<button class="btn btn-secondary" onclick="window.retakeVerificationPhoto()">Ambil Ulang</button>'
+                          : ''}
+                      </div>
                     </div>
-                  ` : '<p style="font-weight: 800; color: #b45309;">Kamera sedang diproses...</p>'}
+                  ` : `<p style="font-weight: 800; color: #b45309;">
+                    ${state.cameraUploading ? 'Foto terlihat di atas dan sedang diunggah...' : 'Kamera sedang diproses...'}
+                  </p>`}
                 </div>
               ` : `
                 <div style="background: linear-gradient(135deg, #fef2f2, #fff1f1); border: 2px solid #fca5a5; border-radius: 16px; padding: 1.5rem; margin-bottom: 1rem;">
@@ -204,7 +226,7 @@ export function renderGateReaderPage(state) {
               <div style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.6;" class="animate-float">📋</div>
               <h3 style="color: #0f766e; margin-bottom: 0.5rem;">Belum Ada Pengetapan Kartu</h3>
               <p style="font-size: 0.92rem; color: #64748b; max-width: 320px; margin: 0 auto;">
-                Tempelkan kartu NFC fisik di sebelah kiri atau klik tombol simulator untuk memulai verifikasi penjemputan anak.
+                Tempelkan kartu NFC fisik di sebelah kiri untuk memulai verifikasi penjemputan anak.
               </p>
             </div>
           `}

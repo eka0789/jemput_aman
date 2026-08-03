@@ -1,7 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { env } from './env.js';
 
-const apiKey = env.SUPABASE_SECRET_KEY || env.SUPABASE_PUBLISHABLE_KEY;
+// The API reads and writes tenant data on behalf of authenticated users. A
+// browser-safe publishable key must never silently become the server identity.
+const apiKey = env.SUPABASE_SECRET_KEY;
 
 export const isSupabaseConfigured = Boolean(env.SUPABASE_URL && apiKey);
 

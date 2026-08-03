@@ -129,4 +129,5 @@ describe('NFC Verification Contract & Logic Tests', () => {
     expect(result.status).toBe('VERIFIED');
     expect(result.verification_photo).toContain('/storage/v1/object/sign/images/');
   });
+
 });

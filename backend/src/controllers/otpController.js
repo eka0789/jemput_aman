@@ -21,7 +21,7 @@ export const requestEmergencyOtp = async (req, res, next) => {
     const otp = await otpService.requestOtp({ studentId: student_id, pickupPersonId: pickup_person_id, schoolId });
     res.json({
       success: true,
-      message: 'Permintaan OTP Darurat berhasil dibuat untuk persetujuan Orang Tua',
+      message: 'Permintaan pengiriman OTP diterima gateway WhatsApp dan berlaku selama 10 menit',
       data: {
         ...publicOtp(otp),
         expires_in_seconds: 600,
@@ -63,7 +63,12 @@ export const approveEmergencyOtp = async (req, res, next) => {
       });
     }
 
-    res.json({ success: true, message: 'Verifikasi Darurat OTP Disetujui', data: publicOtp(approved) });
+    res.json({
+      success: true,
+      status: approved.verification.status,
+      message: approved.verification.message,
+      data: approved.verification.data
+    });
   } catch (err) {
     next(err);
   }

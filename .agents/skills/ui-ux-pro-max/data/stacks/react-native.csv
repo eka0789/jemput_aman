@@ -45,7 +45,7 @@ No,Category,Guideline,Description,Do,Don't,Code Good,Code Bad,Severity,Docs URL
 44,Accessibility,Use accessibility roles,Semantic meaning,accessibilityRole for elements,Wrong roles,"accessibilityRole=""button""",No role for button,Medium,
 45,Accessibility,Support screen readers,Test with TalkBack/VoiceOver,Test with screen readers,Skip accessibility testing,Regular TalkBack testing,No screen reader testing,High,
 46,Testing,Use React Native Testing Library,Component testing,render and fireEvent,Enzyme or manual testing,render(<Component />),shallow(<Component />),Medium,https://callstack.github.io/react-native-testing-library/
-47,Testing,Test on real devices,Real device behavior,Test on iOS and Android devices,Simulator only,Device testing in CI,Simulator only testing,High,
+47,Testing,Test on real devices,Real device behavior,Test on iOS and Android devices,Device testing in CI,High,
 48,Testing,Use Detox for E2E,End-to-end testing,Detox for critical flows,Manual E2E testing,detox test,Manual testing only,Medium,https://wix.github.io/Detox/
 49,Native,Use native modules carefully,Bridge has overhead,Batch native calls,Frequent bridge crossing,Batch updates,Call native on every keystroke,High,
 50,Native,Use Expo when possible,Simplified development,Expo for standard features,Bare RN for simple apps,expo install package,react-native link package,Low,https://docs.expo.dev/

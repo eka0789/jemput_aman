@@ -40,6 +40,14 @@ export const otpService = {
       otpCode: randomOtp,
       expiresInMinutes: 10
     });
+    if (!notification.success) {
+      await emergencyOtpModel.reject(otp.id, schoolId);
+      const error = new Error(`OTP tidak dikirim ke WhatsApp orang tua: ${notification.message}`);
+      error.statusCode = 502;
+      error.code = 'OTP_DELIVERY_FAILED';
+      error.notification = notification;
+      throw error;
+    }
     return { ...otp, otp_code: randomOtp, notification };
   },
   approveOtp: async ({
@@ -72,8 +80,20 @@ export const otpService = {
     });
     if (!otp) return null;
 
-    // Log verified emergency pickup
-    await pickupLogModel.create({
+    // Fetch fresh student/pickup_person/parent for the gate reader photo UI.
+    const [student, pickupPerson, parent] = await Promise.all([
+      models.students.findById(otp.student_id, otp.school_id),
+      models.pickupPersons.findById(otp.pickup_person_id, otp.school_id),
+      models.students.findById(otp.student_id, otp.school_id).then(s => (
+        s?.parent_id ? models.users.findById(s.parent_id, otp.school_id) : null
+      ))
+    ]);
+
+    // Create pickup log in PENDING_PHOTO state: the face verification photo
+    // must still be captured at the gate before the student may leave, exactly
+    // like the NFC tap flow (nfcService.verifyTap). Notifikasi penjemputan
+    // di-dispatch oleh attachVerificationPhoto saat foto terlampir.
+    const log = await pickupLogModel.create({
       school_id: otp.school_id,
       student_id: otp.student_id,
       student_name: otp.student_name,
@@ -82,10 +102,30 @@ export const otpService = {
       nfc_card_id: null,
       duty_teacher_id: teacherId,
       verification_method: 'EMERGENCY_OTP',
-      status: 'VERIFIED',
-      notes: 'Verifikasi darurat tanpa kartu NFC disetujui menggunakan OTP valid'
+      status: 'PENDING_PHOTO',
+      notes: 'Verifikasi darurat tanpa kartu NFC — OTP valid, menunggu foto wajah penjemput'
     });
 
-    return otp;
+    return {
+      ...otp,
+      pickup_log_id: log.id,
+      verification: {
+        status: log.status,
+        message: 'OTP valid. Foto wajah penjemput wajib diambil untuk menyelesaikan verifikasi.',
+        data: {
+          pickup_log_id: log.id,
+          student: student
+            ? { id: student.id, full_name: student.full_name, class_name: student.class_name, photo_url: student.photo_url }
+            : { id: otp.student_id, full_name: otp.student_name, class_name: '', photo_url: null },
+          pickup_person: pickupPerson
+            ? { id: pickupPerson.id, full_name: pickupPerson.full_name, relationship: pickupPerson.relationship, phone_number: pickupPerson.phone_number, photo_url: pickupPerson.photo_url }
+            : { id: otp.pickup_person_id, full_name: otp.pickup_person_name, relationship: '', phone_number: null, photo_url: null },
+          parent: parent ? { id: parent.id, full_name: parent.full_name, phone_number: parent.phone_number } : null,
+          timestamp: log.timestamp,
+          notification_sent: false,
+          verification_photo: null
+        }
+      }
+    };
   }
 };

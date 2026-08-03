@@ -245,7 +245,11 @@ export const nfcService = {
       }
     };
   },
-  attachVerificationPhoto: async ({ pickupLogId, schoolId, facePhoto }) => {
+  attachVerificationPhoto: async ({
+    pickupLogId,
+    schoolId,
+    facePhoto
+  }) => {
     const log = await storeVerificationPhoto({ pickupLogId, schoolId, facePhoto });
 
     if (!log) {
@@ -260,6 +264,7 @@ export const nfcService = {
       pickup_person_name: log.pickup_person_name,
       timestamp: log.timestamp,
       status: log.status,
+      verification_method: log.verification_method,
       verification_photo: await storageService.getSignedUrl(log.verification_photo)
     };
   }

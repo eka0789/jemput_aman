@@ -24,6 +24,7 @@ export function renderScheduleConfigPage(state) {
         <div style="display: grid; gap: 0.5rem; margin-bottom: 1.5rem;">
           <label for="schedule-student" style="font-weight: 700;">Pilih Siswa</label>
           <select id="schedule-student" onchange="window.changeScheduleStudent(this.value)" style="padding: 0.75rem; border-radius: 10px; border: 1px solid #cbd5e1;">
+            ${students.length ? '' : '<option value="">Belum ada siswa</option>'}
             ${students.map(student => `
               <option value="${h(student.id)}" ${student.id === state.scheduleStudentId ? 'selected' : ''}>
                 ${h(student.name)} (${h(student.class_name)})
@@ -32,7 +33,7 @@ export function renderScheduleConfigPage(state) {
           </select>
         </div>
 
-        <div style="display: grid; gap: 1rem;">
+        ${students.length ? `<div style="display: grid; gap: 1rem;">
           ${days.map(day => {
             const selected = schedules.find(item => item.day_of_week === day.key)?.pickup_person_id || '';
             return `
@@ -53,7 +54,7 @@ export function renderScheduleConfigPage(state) {
 
         <button class="btn btn-primary" onclick="window.saveWeeklySchedule()" style="width: 100%; margin-top: 1.25rem;">
           Simpan Jadwal
-        </button>
+        </button>` : '<div class="empty-data-panel">Tambahkan siswa terlebih dahulu sebelum menyusun jadwal.</div>'}
       </div>
     </div>
   `;
