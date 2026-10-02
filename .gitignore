@@ -16,3 +16,6 @@ build/
 Thumbs.db
 .vscode/
 .idea/
+
+# Vercel local project link
+.vercel/
